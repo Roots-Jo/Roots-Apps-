@@ -584,6 +584,7 @@ function loadHistory() {
               <td style="display: flex; gap: 5px;">
                  <button class="pay-btn" style="background: var(--bg); color: var(--dark); border: 1px solid var(--bdr);" onclick="viewHistoryRun('${r.runId}', this)">View</button>
                  <button class="pay-btn paid" onclick="downloadHistoryRun('${r.runId}', this)">Download</button>
+                 <button class="pay-btn" style="background: var(--rbg); color: var(--red); border: 1px solid #f5c2c7;" onclick="deleteHistoryRun('${r.runId}', this)">Delete</button>
               </td>
             </tr>
           `}).join('');
@@ -625,28 +626,41 @@ window.viewHistoryRun = async function(runId, btn) {
         btn.disabled = false;
     }
 };
-window.downloadHistoryRun = async function(runId, btn) {
-    btn.textContent = 'Downloading...';
+
+window.downloadHistoryRun = function(runId, btn) {
+    if (!window.codHistoryData || !window.codHistoryData[runId]) return;
+    btn.textContent = '...';
+    get(ref(db, `roots_cod_dashboard/history_data/${runId}`)).then((snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+             const report = JSON.parse(data.reportJson);
+             const outliers = JSON.parse(data.outliersJson);
+             const ts = window.codHistoryData[runId].timestamp;
+             const d = new Date(ts).toISOString().slice(0,10);
+             generateExcelFile(report, outliers, d).finally(() => {
+                 btn.textContent = 'Download';
+             });
+        }
+    }).catch(err => {
+        alert("Failed to download: " + err.message);
+        btn.textContent = 'Download';
+    });
+}
+
+window.deleteHistoryRun = async function(runId, btn) {
+    if (!confirm(`Are you sure you want to permanently delete this COD run (${runId})?`)) return;
+    
+    btn.textContent = '...';
     btn.disabled = true;
     try {
-        const dataRef = ref(db, `roots_cod_dashboard/history_data/${runId}`);
-        const snap = await get(dataRef);
-        const data = snap.val();
-        if (data) {
-            const report = JSON.parse(data.reportJson || '[]');
-            const outliers = JSON.parse(data.outliersJson || '[]');
-            const runInfo = window.codHistoryData[runId] || { timestamp: Date.now() };
-            generateExcelFile(report, outliers, new Date(runInfo.timestamp).toISOString().slice(0,10));
-        } else {
-            alert("No heavy data found for this run.");
-        }
-    } catch(e) {
-        alert("Error fetching historical data: " + e.message);
-    } finally {
-        btn.textContent = 'Download Excel';
+        await set(ref(db, `roots_cod_dashboard/history_meta/${runId}`), null);
+        await set(ref(db, `roots_cod_dashboard/history_data/${runId}`), null);
+    } catch (err) {
+        alert("Error deleting run: " + err.message);
+        btn.textContent = 'Delete';
         btn.disabled = false;
     }
-};
+}
 
 window.toggleRunStatus = async function(runId, currentStatus) {
     const newStatus = !currentStatus;
