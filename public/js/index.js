@@ -19,32 +19,32 @@ const ALL_APPS = [
   {
     id: "roots_cod_dashboard",
     href: "/roots_cod_dashboard",
-    icon: "💰",
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--orange, #F37828)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`,
     title: "COD Dashboard"
   },
   {
     id: "pickup_tracker",
     href: "/pickup_tracker",
-    icon: "🚚",
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--orange, #F37828)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>`,
     title: "Pickup Tracker"
   },
   {
     id: "cases_tracker",
     href: "/cases_tracker",
-    icon: "📋",
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--orange, #F37828)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>`,
     title: "Cases Tracker"
   },
   {
     id: "kpi_dashboard",
-    href: "https://roots-c2c-sla.netlify.app/",
-    icon: "📊",
+    href: "https://rootsdashboardjun2026.netlify.app/",
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--orange, #F37828)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
     title: "KPI Dashboard",
     external: true
   },
   {
     id: "shift_tracker",
     href: "/shift_tracker",
-    icon: "⏱️",
+    icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--orange, #F37828)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
     title: "Shift Tracker"
   }
 ];
@@ -93,7 +93,7 @@ const loadDashboard = async (username) => {
     if (username === "Roots" || localStorage.getItem("roots-isAdmin") === "true") {
       grid.innerHTML += `
         <a href="/admin.html" class="option-card" style="border: 1px solid var(--accent);">
-          <div class="icon-wrap" style="color: var(--accent); background: var(--accent-dim);">⚙️</div>
+          <div class="icon-wrap" style="color: var(--accent); background: var(--accent-dim);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--orange, #F37828)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
           <h2 class="card-title">Admin Portal</h2>
         </a>
       `;

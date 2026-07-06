@@ -77,6 +77,9 @@ body {
   align-items: center;
   justify-content: center;
 }
+.mobile-home-link {
+  display: none;
+}
 
 @media (max-width: 1000px) {
   .global-nav {
@@ -111,6 +114,10 @@ body {
   
   .global-nav .g-nav-center.open {
     display: flex !important;
+  }
+  
+  .mobile-home-link {
+    display: block !important;
   }
   
   html[data-theme="dark"] .g-nav-center {

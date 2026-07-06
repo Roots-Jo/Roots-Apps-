@@ -74,7 +74,6 @@ body {
 .icon-wrap {
   width: 52px;
   height: 52px;
-  background: rgba(243, 120, 40, 0.1);
   border-radius: 12px;
   display: flex;
   align-items: center;

@@ -30,14 +30,7 @@ body {
   min-height: 100vh;
 }
 
-.cod-actions {
-  position: fixed;
-  top: 54px;
-  right: 32px;
-  display: flex;
-  gap: 12px;
-  z-index: 10001;
-}
+
 
 .hbtn {
   background: #fff;
@@ -109,7 +102,7 @@ body {
 }
 
 .drop-card {
-  background: #fff;
+  background: var(--bg);
   border: 2px dashed var(--bdr);
   border-radius: 14px;
   padding: 2rem 1.5rem;
@@ -126,7 +119,7 @@ body {
 .drop-card.loaded {
   border-style: solid;
   border-color: var(--orange);
-  background: #fffaf6;
+  background: var(--bg);
 }
 
 .drop-card input {
@@ -136,6 +129,7 @@ body {
   cursor: pointer;
   width: 100%;
   height: 100%;
+  z-index: 10;
 }
 
 .di {
@@ -257,7 +251,7 @@ body {
 }
 
 .sc {
-  background: #fff;
+  background: var(--bg);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   border-top: 3px solid var(--bdr);
@@ -326,7 +320,7 @@ body {
 
 /* --- Transfer Summary --- */
 .transfer-box {
-  background: #fff;
+  background: var(--bg);
   border-radius: 14px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -416,6 +410,7 @@ body {
   transition: all .15s;
 }
 
+
 .mark-paid-btn:hover {
   background: var(--green);
   color: #fff;
@@ -445,7 +440,7 @@ body {
 }
 
 .mc {
-  background: #fff;
+  background: var(--bg);
   border-radius: 12px;
   padding: 1.25rem;
   border-left: 4px solid var(--orange);
@@ -1167,4 +1162,80 @@ tbody tr:hover td {
   #historyView {
     padding: 1rem;
   }
+}
+
+/* --- Pagination & Filters --- */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 15px;
+  padding: 10px 0;
+  border-top: 1px solid var(--bdr);
+}
+
+.pagination button {
+  padding: 7px 14px;
+  border: 1px solid var(--bdr);
+  background: var(--bg);
+  color: var(--dark);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange);
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* --- Topbar Layout --- */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.topbar-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--dark);
+}
+.topbar-meta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.cod-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* --- Excel Button --- */
+.btn-excel {
+  background: var(--green, #107c41) !important;
+  color: #fff !important;
+  border: 1px solid var(--green, #107c41) !important;
+}
+.btn-excel:hover {
+  background: #0b5e31 !important;
+  border-color: #0b5e31 !important;
 }

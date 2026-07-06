@@ -47,7 +47,7 @@
 
     const firstLetter = username.charAt(0).toUpperCase();
 
-    let centerLinks = '';
+    let centerLinks = `<a href="/" class="mobile-home-link ${isActive('index')}">Home</a>`;
     
     if (userApps['roots_cod_dashboard']) {
       centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}">COD Dashboard</a>`;
@@ -59,7 +59,7 @@
       centerLinks += `<a href="/cases_tracker" class="${isActive('cases_tracker')}">Cases Tracker</a>`;
     }
     if (userApps['kpi_dashboard']) {
-      centerLinks += `<a href="https://roots-c2c-sla.netlify.app/" target="_blank">KPI Tracking</a>`;
+      centerLinks += `<a href="https://rootsdashboardjun2026.netlify.app/" target="_blank">KPI Tracking</a>`;
     }
     if (userApps['shift_tracker']) {
       centerLinks += `<a href="/shift_tracker" class="${isActive('shift_tracker')}">Shift Tracker</a>`;

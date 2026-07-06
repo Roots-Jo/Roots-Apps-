@@ -5,77 +5,162 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Roots COD Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="/css/roots_cod_dashboard.css">
 <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
 <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 <body>
 
   <div id="navbar"></div>
   <script src="/js/navbar.js?v=1.0.7"></script>
 
-<div class="cod-actions">
-  <div id="liveBadge" style="display:none" class="live-badge">● LIVE</div>
-  <button class="hbtn" id="histBtn" onclick="window.showHistory()">History</button>
-  <button class="hbtn" id="paidBtn" onclick="window.showPaidSummary()" style="display:none">Paid Summary</button>
-  <button class="hbtn" id="resetBtn" onclick="window.resetDashboard()" style="display:none">New</button>
-</div>
-
-<div id="uploadView">
-  <div class="upload-hero"><h1>COD <span>Reconciliation</span></h1><p>Upload your Omniful export and SkyNet settlement files to begin</p></div>
-  <div class="ugrid">
-    <div class="drop-card" id="omnifulDrop">
-      <input type="file" accept=".xlsx,.xls" onchange="handleOmniful(event)">
-      <div class="di">📋</div><div class="dsrc">Omniful</div>
-      <div class="dlbl">Order Export</div><div class="dhint">Upload your weekly Omniful export</div>
-      <div id="omnifulFiles" class="dfiles"></div>
+  <!-- Upload View -->
+  <div id="uploadView">
+    <div class="upload-hero">
+      <h1>COD <span>Reconciliation</span></h1>
+      <p>Upload your Orders and Shipping Partner sheets to reconcile</p>
+      <button class="hbtn" id="viewHistoryBtn" style="margin-top: 15px; background: var(--bg); color: var(--dark); border: 1px solid var(--bdr);">View Past Reconciliations</button>
     </div>
-    <div class="drop-card" id="skynetDrop">
-      <input type="file" accept=".xlsx,.xls" multiple onchange="handleSkynet(event)">
-      <div class="di">🚚</div><div class="dsrc">SkyNet</div>
-      <div class="dlbl">Settlement Files</div><div class="dhint">Upload 1, 2, or 3 settlement files</div>
-      <div id="skynetFiles" class="dfiles"></div>
-    </div>
-  </div>
-  <button class="run-btn" id="runBtn" onclick="runReconciliation()" disabled>Run Reconciliation</button>
-  <div class="run-err" id="runError"></div>
-</div>
 
-<div id="dashboardView">
-  <div class="topbar">
-    <div><div class="topbar-title">Weekly COD Reconciliation</div><div class="topbar-meta" id="runMeta"></div></div>
-  </div>
-  <div class="scards" id="summaryCards"></div>
-  <div id="transferBox"></div>
-  <div class="sec-lbl">Merchant Breakdown</div>
-  <div class="mgrid" id="merchantGrid"></div>
-  <div class="orders-box">
-    <div class="orders-hdr">
-      <div class="tgrp">
-        <button class="otab active" onclick="switchTab('all',this)">All Orders</button>
-        <button class="otab" onclick="switchTab('matched',this)">Matched</button>
-        <button class="otab" onclick="switchTab('skynetOnly',this)">SkyNet Only</button>
-        <button class="otab" onclick="switchTab('omnifulOnly',this)">Omniful Only</button>
+    <div class="ugrid">
+      <div class="drop-card" id="dropOrders">
+        <div class="di">📄</div>
+        <div class="dsrc">ROOTS</div>
+        <div class="dlbl">Drop Orders CSV/Excel here</div>
+        <div class="dhint">or click to browse</div>
+        <input type="file" id="ordersFile" accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+        <div class="dfiles" id="ordersFileList"></div>
+      </div>
+
+      <div class="drop-card" id="dropPartners">
+        <div class="di">🚚</div>
+        <div class="dsrc">PARTNERS</div>
+        <div class="dlbl">Drop Shipping Partner Excel(s) here</div>
+        <div class="dhint">or click to browse (multiple allowed)</div>
+        <input type="file" id="partnersFiles" multiple accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+        <div class="dfiles" id="partnersFileList"></div>
       </div>
     </div>
-    <div class="otbar">
-      <div class="sbox"><span>🔍</span><input type="text" id="searchInput" placeholder="Search by order ref, customer, or merchant..." oninput="renderTable()"></div>
-    </div>
-    <div class="twrap" id="tableContainer"></div>
-  </div>
-  <div id="paidSummarySection" style="display:none">
-    <div class="sec-lbl">Payment Summary</div>
-    <div class="paid-summary-box" id="paidSummaryBox"></div>
-  </div>
-</div>
 
-<div id="historyView">
-  <div class="hist-hdr" style="margin-bottom:1.5rem"><h2>Reconciliation History</h2><p>All previous reconciliation runs — click any entry to view full details</p></div>
-  <div id="historyList"></div>
-  <div id="historyDetail"></div>
-</div>
+
+    <button class="run-btn" id="runReconciliationBtn" disabled>Run Reconciliation</button>
+    <div class="run-err" id="runError"></div>
+  </div>
+
+  <!-- Dashboard View -->
+  <div id="dashboardView">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Reconciliation Results</div>
+        <div class="topbar-meta" id="runMeta"></div>
+      </div>
+      <div class="cod-actions">
+        <button class="hbtn btn-excel" id="downloadExcelBtn">
+          <svg style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download Excel
+        </button>
+        <button class="hbtn" id="backToUploadBtn">Back</button>
+      </div>
+    </div>
+
+    <div class="scards">
+      <div class="sc dark">
+        <div class="sc-l">Total COD to be Transferred</div>
+        <div class="sc-v" id="statTotalCod">0 JOD</div>
+        <div class="sc-s">Matched orders (Partner Net)</div>
+      </div>
+      <div class="sc gc">
+        <div class="sc-l">Matched Orders</div>
+        <div class="sc-v" id="statMatched">0</div>
+        <div class="sc-s">Found in both sheets</div>
+      </div>
+      <div class="sc rc">
+        <div class="sc-l">Outliers</div>
+        <div class="sc-v" id="statOutliers">0</div>
+        <div class="sc-s">Mismatched or missing</div>
+      </div>
+      <div class="sc oc">
+        <div class="sc-l">Postpaid Verified</div>
+        <div class="sc-v" id="statPostpaid">0</div>
+        <div class="sc-s">COD Applicable = TRUE</div>
+      </div>
+    </div>
+
+    <!-- Outliers Table -->
+    <div class="orders-box">
+      <div class="orders-hdr" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div class="tgrp">
+          <div class="topbar-title">Outliers List</div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <div style="position: relative; width: 240px;">
+            <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted);" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="outliersSearch" placeholder="Search Order ID..." class="outliers-filter search-input" style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--bdr); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--dark); outline: none;">
+          </div>
+          <select id="outliersTypeFilter" class="outliers-filter filter-select" style="padding: 8px 12px; border: 1px solid var(--bdr); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--dark); outline: none;">
+            <option value="All">All Types</option>
+            <option value="Missing in Partners">Missing in Partners</option>
+            <option value="Not in Roots Orders">Not in Roots Orders</option>
+          </select>
+        </div>
+      </div>
+      <div class="twrap">
+        <table>
+          <thead>
+            <tr class="hrow">
+              <th>Type</th>
+              <th>Order ID / Ref</th>
+              <th>Amount</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody id="outliersTableBody">
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="outliersPagination">
+        <button id="outliersPrev" disabled>Previous</button>
+        <span id="outliersPageInfo">Page 1 of 1</span>
+        <button id="outliersNext" disabled>Next</button>
+      </div>
+    </div>
+    
+    <!-- History Section moved to separate view -->
+  </div>
+
+  <!-- History View -->
+  <div id="historyView" style="display: none; padding: 1.5rem 2rem;">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Past Reconciliations</div>
+        <div class="topbar-meta">Review all your previous COD runs</div>
+      </div>
+      <div class="cod-actions" style="position: static;">
+        <button class="hbtn" id="backFromHistoryBtn">Back to Upload</button>
+      </div>
+    </div>
+    <div class="orders-box" style="margin-top: 1rem;">
+      <div class="twrap">
+        <table>
+          <thead>
+            <tr class="hrow">
+              <th>Run ID</th>
+              <th>Date</th>
+              <th>Total COD</th>
+              <th>Matched / Outliers</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
 <script type="module" src="/js/roots_cod_dashboard.js"></script>
 </body>
