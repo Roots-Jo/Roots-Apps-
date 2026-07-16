@@ -59,7 +59,7 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>COD Dashboard</span>
+          <span>COD Reconciliation</span>
           <label class="switch">
             <input type="checkbox" ${apps['roots_cod_dashboard'] ? 'checked' : ''} onchange="togglePerm('${username}', 'roots_cod_dashboard', this.checked)">
             <span class="slider"></span>
@@ -67,7 +67,7 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>Pickup Tracker</span>
+          <span>Collection Tracker</span>
           <label class="switch">
             <input type="checkbox" ${apps['pickup_tracker'] ? 'checked' : ''} onchange="togglePerm('${username}', 'pickup_tracker', this.checked)">
             <span class="slider"></span>

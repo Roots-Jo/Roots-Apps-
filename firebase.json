@@ -59,6 +59,14 @@
       {
         "source": "/shift_tracker.html",
         "destination": "/html/shift_tracker.html"
+      },
+      {
+        "source": "/account_settings",
+        "destination": "/html/account_settings.html"
+      },
+      {
+        "source": "/account_settings.html",
+        "destination": "/html/account_settings.html"
       }
     ],
     "cleanUrls": true,

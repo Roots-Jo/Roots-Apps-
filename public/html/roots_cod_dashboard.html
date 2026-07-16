@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roots COD Dashboard</title>
+<title>Roots COD Reconciliation</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/roots_cod_dashboard.css">
 <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
 <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -107,7 +107,35 @@
           </select>
         </div>
       </div>
-      <div class="twrap">
+      <div class="split-tables" style="display: flex; gap: 1rem; align-items: flex-start; margin-top: 1rem;">
+        
+        <!-- Matched Orders Table -->
+        <div style="flex: 1; background: var(--bg); border: 1px solid var(--bdr); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+          <div style="padding: 12px 16px; border-bottom: 1px solid var(--bdr); font-weight: 600;">Matched Orders</div>
+          <div class="twrap" style="max-height: 400px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead style="position: sticky; top: 0; background: var(--bg); box-shadow: 0 1px 0 var(--bdr);">
+                <tr class="hrow">
+                  <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: var(--muted);">Courier</th>
+                  <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: var(--muted);">Order ID</th>
+                  <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: var(--muted);">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="matchedTableBody">
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="matchedPagination" style="padding: 10px 16px; border-top: 1px solid var(--bdr); display: flex; justify-content: space-between; align-items: center;">
+            <button id="matchedPrev" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Previous</button>
+            <span id="matchedPageInfo" style="font-size: 12px; color: var(--muted);">Page 1 of 1</span>
+            <button id="matchedNext" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Next</button>
+          </div>
+        </div>
+
+        <!-- Outliers Table -->
+        <div style="flex: 1; background: var(--bg); border: 1px solid var(--bdr); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+          <div style="padding: 12px 16px; border-bottom: 1px solid var(--bdr); font-weight: 600;">Outliers</div>
+          <div class="twrap" style="max-height: 400px; overflow-y: auto;">
         <table>
           <thead>
             <tr class="hrow">
@@ -124,7 +152,9 @@
       <div class="pagination" id="outliersPagination">
         <button id="outliersPrev" disabled>Previous</button>
         <span id="outliersPageInfo">Page 1 of 1</span>
-        <button id="outliersNext" disabled>Next</button>
+            <button id="outliersNext" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Next</button>
+          </div>
+        </div>
       </div>
     </div>
     

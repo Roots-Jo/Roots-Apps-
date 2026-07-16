@@ -47,13 +47,13 @@
 
     const firstLetter = username.charAt(0).toUpperCase();
 
-    let centerLinks = `<a href="/" class="mobile-home-link ${isActive('index')}">Home</a>`;
+    let centerLinks = ``;
     
     if (userApps['roots_cod_dashboard']) {
-      centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}">COD Dashboard</a>`;
+      centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}">COD Reconciliation</a>`;
     }
     if (userApps['pickup_tracker']) {
-      centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}">Pickup Tracker</a>`;
+      centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}">Collection Tracker</a>`;
     }
     if (userApps['cases_tracker']) {
       centerLinks += `<a href="/cases_tracker" class="${isActive('cases_tracker')}">Cases Tracker</a>`;
@@ -87,6 +87,9 @@
           </button>
           
           <div class="user-controls" style="display: flex; align-items: center; gap: 10px;">
+            <a href="/account_settings" title="Update Password" style="color: currentColor; display: flex; align-items: center; justify-content: center; opacity: 0.8; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </a>
             <div class="user-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 1px solid rgba(255, 255, 255, 0.2);" title="Logged in as ${username}">
               ${firstLetter}
             </div>

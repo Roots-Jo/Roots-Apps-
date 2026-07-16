@@ -67,6 +67,12 @@ const ui = {
   statMatched: document.getElementById('statMatched'),
   statOutliers: document.getElementById('statOutliers'),
   statPostpaid: document.getElementById('statPostpaid'),
+  
+  matchedTableBody: document.getElementById('matchedTableBody'),
+  matchedPrev: document.getElementById('matchedPrev'),
+  matchedNext: document.getElementById('matchedNext'),
+  matchedPageInfo: document.getElementById('matchedPageInfo'),
+  
   outliersTableBody: document.getElementById('outliersTableBody'),
   historyTableBody: document.getElementById('historyTableBody'),
   downloadBtn: document.getElementById('downloadExcelBtn'),
@@ -150,7 +156,7 @@ async function parseFileForMapping(file, isRoots = false) {
         }
 
         // Intelligent backend auto-detection
-        const mapping = { id: null, amt: null, fee: null };
+        const mapping = { id: null, ref: null, amt: null, fee: null, date: null, status: null };
         const findCol = (kws) => {
              for(let kw of kws) {
                  let idx = columnOptions.findIndex(o => o.rawName.toLowerCase().includes(kw));
@@ -160,14 +166,17 @@ async function parseFileForMapping(file, isRoots = false) {
         };
 
         if (isRoots) {
-            mapping.id = findCol(['order id', 'reference', 'tracking', 'awb']);
+            mapping.id = findCol(['order id', 'tracking', 'awb']);
+            mapping.ref = findCol(['reference', 'ref']);
             mapping.amt = findCol(['collection amount', 'cod amount', 'order amount', 'total']);
             mapping.fee = findCol(['delivery', 'shipping', 'fee']);
             mapping.date = findCol(['date', 'created', 'delivery date', 'delivered at']);
             mapping.status = findCol(['status', 'payment status', 'type']);
+            mapping.courier = findCol(['courier', 'delivered by', 'shipping account', 'partner']);
         } else {
-            mapping.id = findCol(['order id', 'reference', 'tracking', 'awb', 'ref']);
-            mapping.amt = findCol(['net', 'due amount', 'duo amt', 'amount', 'cod', 'total', 'amt']);
+            mapping.id = findCol(['order id', 'tracking', 'awb']);
+            mapping.ref = findCol(['reference', 'ref', 'client ref']);
+            mapping.amt = findCol(['net', 'due to merchant', 'due amount', 'duo amt', 'amount', 'cod', 'total', 'amt']);
             mapping.fee = findCol(['delivery fee', 'shipping fee', 'fee', 'charge']);
             mapping.date = findCol(['date', 'delivered at', 'delivery date']);
             mapping.status = findCol(['payment status', 'status', 'type']);
@@ -240,22 +249,41 @@ ui.runBtn.addEventListener('click', async () => {
   ui.runBtn.disabled = true;
 
   try {
-    const rootsMap = new Map();
+    const rootsOrders = [];
+    const rootsLookupMap = new Map();
+
     rootsFileObj.dataObjects.forEach(row => {
       const id = String(row[rootsFileObj.mapping.id] || '').trim();
-      if (id) {
-          rootsMap.set(id, extractDetails(row, rootsFileObj.mapping));
+      const refId = String(row[rootsFileObj.mapping.ref] || '').trim();
+      let courier = '';
+      if(rootsFileObj.mapping.courier !== null && rootsFileObj.mapping.courier !== undefined) {
+          courier = String(row[rootsFileObj.mapping.courier] || '').trim();
+      }
+      
+      if (id || refId) {
+          const details = extractDetails(row, rootsFileObj.mapping);
+          details.rootsId = id;
+          details.rootsRef = refId;
+          details.courier = courier;
+          details.isMatched = false;
+          rootsOrders.push(details);
+          if (id) rootsLookupMap.set(id, details);
+          if (refId) rootsLookupMap.set(refId, details);
       }
     });
 
-    const partnerMap = new Map();
+    const partnerOrders = [];
     partnerFileObjs.forEach(pObj => {
       pObj.dataObjects.forEach(row => {
         const id = String(row[pObj.mapping.id] || '').trim();
-        if (id) {
+        const refId = String(row[pObj.mapping.ref] || '').trim();
+        if (id || refId) {
           const details = extractDetails(row, pObj.mapping);
+          details.partnerId = id;
+          details.partnerRef = refId;
           details.fileName = pObj.file.name;
-          partnerMap.set(id, details);
+          details.isMatched = false;
+          partnerOrders.push(details);
         }
       });
     });
@@ -265,66 +293,94 @@ ui.runBtn.addEventListener('click', async () => {
     const outliers = [];
     let postpaidCount = 0;
 
-    // Check Roots vs Partners
-    rootsMap.forEach((rInfo, id) => {
-      if (partnerMap.has(id)) {
-        const pInfo = partnerMap.get(id);
-        totalCodTransferred += pInfo.net;
-        postpaidCount++;
-        
-        finalReport.push({
-          'ORDER ID': id,
-          'COD Applicable': 'TRUE',
-          'Order Amount': rInfo.amt || rInfo.net,
-          'COD Amount': rInfo.net,
-          'Shipping Fees (roots)': rInfo.fee,
-          'Due to Merchant': pInfo.net,
-          'ORDER DELIVERED AT': pInfo.date || rInfo.date || '',
-          'PAYMENT STATUS': pInfo.status || rInfo.status || 'POSTPAID',
-          'NOTES': ''
-        });
-      } else {
-        outliers.push({
-          type: 'Missing in Partners',
-          id: id,
-          amount: rInfo.net,
-          source: 'Roots Orders'
-        });
-        finalReport.push({
-           'ORDER ID': id,
-           'COD Applicable': 'FALSE',
-           'Order Amount': rInfo.amt || rInfo.net,
-           'COD Amount': rInfo.net,
-           'Shipping Fees (roots)': rInfo.fee,
-           'Due to Merchant': 0,
-           'ORDER DELIVERED AT': '',
-           'PAYMENT STATUS': rInfo.status || '',
-           'NOTES': 'Missing in Partners'
-        });
-      }
+    partnerOrders.forEach(pInfo => {
+        let matchedRoots = null;
+        if (pInfo.partnerId && rootsLookupMap.has(pInfo.partnerId)) matchedRoots = rootsLookupMap.get(pInfo.partnerId);
+        else if (pInfo.partnerRef && rootsLookupMap.has(pInfo.partnerRef)) matchedRoots = rootsLookupMap.get(pInfo.partnerRef);
+
+        if (matchedRoots) {
+            matchedRoots.isMatched = true;
+            pInfo.isMatched = true;
+            
+            totalCodTransferred += pInfo.net;
+            postpaidCount++;
+            
+            finalReport.push({
+              'ORDER ID': pInfo.partnerId || matchedRoots.rootsId,
+              'COD Applicable': 'TRUE',
+              'Order Amount': matchedRoots.amt || matchedRoots.net,
+              'COD Amount': matchedRoots.net,
+              'Shipping Fees (roots)': matchedRoots.fee,
+              'Due to Merchant': pInfo.net,
+              'ORDER DELIVERED AT': pInfo.date || matchedRoots.date || '',
+              'PAYMENT STATUS': pInfo.status || matchedRoots.status || 'POSTPAID',
+              'Courier': matchedRoots.courier || pInfo.fileName,
+              'NOTES': ''
+            });
+        } else {
+            outliers.push({
+              type: 'Not in Roots Orders',
+              id: pInfo.partnerId || pInfo.partnerRef,
+              amount: pInfo.net,
+              source: pInfo.fileName
+            });
+            finalReport.push({
+               'ORDER ID': pInfo.partnerId || pInfo.partnerRef,
+               'COD Applicable': 'FALSE',
+               'Order Amount': pInfo.amt || pInfo.net,
+               'COD Amount': pInfo.net,
+               'Shipping Fees (roots)': pInfo.fee,
+               'Due to Merchant': pInfo.net,
+               'ORDER DELIVERED AT': pInfo.date || '',
+               'PAYMENT STATUS': pInfo.status || '',
+               'Courier': pInfo.fileName,
+               'NOTES': 'Not in Roots Orders'
+            });
+        }
     });
 
-    // Check Partners vs Roots
-    partnerMap.forEach((pInfo, id) => {
-      if (!rootsMap.has(id)) {
-        outliers.push({
-          type: 'Not in Roots Orders',
-          id: id,
-          amount: pInfo.net,
-          source: pInfo.fileName
-        });
-        finalReport.push({
-           'ORDER ID': id,
-           'COD Applicable': 'FALSE',
-           'Order Amount': pInfo.amt || pInfo.net,
-           'COD Amount': pInfo.net,
-           'Shipping Fees (roots)': pInfo.fee,
-           'Due to Merchant': pInfo.net,
-           'ORDER DELIVERED AT': pInfo.date || '',
-           'PAYMENT STATUS': pInfo.status || '',
-           'NOTES': 'Not in Roots Orders'
-        });
-      }
+    rootsOrders.forEach(rInfo => {
+        if (!rInfo.isMatched) {
+            const courierLower = rInfo.courier.toLowerCase();
+            const isManual = courierLower && !courierLower.includes('skynet') && !courierLower.includes('click') && !courierLower.includes('wassel');
+            
+            if (isManual) {
+                // Auto-match private driver
+                totalCodTransferred += rInfo.net;
+                postpaidCount++;
+                finalReport.push({
+                  'ORDER ID': rInfo.rootsId || rInfo.rootsRef,
+                  'COD Applicable': 'TRUE',
+                  'Order Amount': rInfo.amt || rInfo.net,
+                  'COD Amount': rInfo.net,
+                  'Shipping Fees (roots)': rInfo.fee,
+                  'Due to Merchant': rInfo.net,
+                  'ORDER DELIVERED AT': rInfo.date || '',
+                  'PAYMENT STATUS': rInfo.status || 'POSTPAID',
+                  'Courier': rInfo.courier || 'Private Driver',
+                  'NOTES': 'Auto-matched private driver'
+                });
+            } else {
+                outliers.push({
+                  type: 'Missing in Partners',
+                  id: rInfo.rootsId || rInfo.rootsRef,
+                  amount: rInfo.net,
+                  source: 'Roots Orders'
+                });
+                finalReport.push({
+                   'ORDER ID': rInfo.rootsId || rInfo.rootsRef,
+                   'COD Applicable': 'FALSE',
+                   'Order Amount': rInfo.amt || rInfo.net,
+                   'COD Amount': rInfo.net,
+                   'Shipping Fees (roots)': rInfo.fee,
+                   'Due to Merchant': 0,
+                   'ORDER DELIVERED AT': '',
+                   'PAYMENT STATUS': rInfo.status || '',
+                   'Courier': rInfo.courier || 'SkyNet/Click',
+                   'NOTES': 'Missing in Partners'
+                });
+            }
+        }
     });
 
     reconciliationResult = {
@@ -363,13 +419,46 @@ function showDashboard(res) {
 
   // Reset pagination
   currentPage = 1;
+  currentMatchedPage = 1;
   if(ui.outliersSearch) ui.outliersSearch.value = '';
   if(ui.outliersTypeFilter) ui.outliersTypeFilter.value = 'All';
   
   renderOutliers();
+  renderMatched();
 }
 
 // Pagination & Filtering Logic
+let currentMatchedPage = 1;
+
+function renderMatched() {
+  if (!reconciliationResult) return;
+  const matchedOrders = reconciliationResult.report.filter(r => r['COD Applicable'] === 'TRUE' || r['COD Applicable'] === true);
+  
+  const totalPages = Math.ceil(matchedOrders.length / itemsPerPage) || 1;
+  if (currentMatchedPage > totalPages) currentMatchedPage = totalPages;
+  if (currentMatchedPage < 1) currentMatchedPage = 1;
+  
+  if (ui.matchedPageInfo) {
+      ui.matchedPageInfo.textContent = `Page ${currentMatchedPage} of ${totalPages} (${matchedOrders.length} records)`;
+  }
+  
+  if (ui.matchedPrev) ui.matchedPrev.disabled = currentMatchedPage === 1;
+  if (ui.matchedNext) ui.matchedNext.disabled = currentMatchedPage === totalPages;
+  
+  const start = (currentMatchedPage - 1) * itemsPerPage;
+  const pageData = matchedOrders.slice(start, start + itemsPerPage);
+  
+  if(ui.matchedTableBody) {
+      ui.matchedTableBody.innerHTML = pageData.map(o => `
+        <tr>
+          <td><span class="badge" style="background: var(--light); color: var(--dark); border-color: var(--bdr);">${o.Courier || 'Partner'}</span></td>
+          <td style="font-weight: 600;">${o['ORDER ID']}</td>
+          <td>${Number(o['Due to Merchant']).toFixed(3)}</td>
+        </tr>
+      `).join('');
+  }
+}
+
 function renderOutliers() {
   if (!reconciliationResult) return;
   
@@ -413,6 +502,13 @@ if (ui.outliersPrev) ui.outliersPrev.addEventListener('click', () => { if (curre
 if (ui.outliersNext) ui.outliersNext.addEventListener('click', () => { 
   const totalPages = Math.ceil(filteredOutliers.length / itemsPerPage);
   if (currentPage < totalPages) { currentPage++; renderOutliers(); } 
+});
+
+if (ui.matchedPrev) ui.matchedPrev.addEventListener('click', () => { if (currentMatchedPage > 1) { currentMatchedPage--; renderMatched(); } });
+if (ui.matchedNext) ui.matchedNext.addEventListener('click', () => { 
+  const matchedOrders = reconciliationResult.report.filter(r => r['COD Applicable'] === 'TRUE' || r['COD Applicable'] === true);
+  const totalPages = Math.ceil(matchedOrders.length / itemsPerPage);
+  if (currentMatchedPage < totalPages) { currentMatchedPage++; renderMatched(); } 
 });
 
 // View Toggles
