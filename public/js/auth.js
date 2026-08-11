@@ -1,5 +1,6 @@
 // Global access control for Apps
 (async function() {
+  const t = (key, fb) => window.i18n && window.i18n.t(key) !== key ? window.i18n.t(key) : fb;
   const username = localStorage.getItem("roots-user");
   
   if (!username) {
@@ -28,12 +29,12 @@
 
     if (appId === "admin") {
       if (!data || !data.isAdmin) {
-        alert("You do not have permission to access the admin portal.");
+        alert(t("auth_err_admin", "You do not have permission to access the admin portal."));
         window.location.href = "/";
       }
     } else if (!data || !data.apps || !data.apps[appId]) {
       // User doesn't exist or doesn't have permission
-      alert(`You do not have permission to access this app.`);
+      alert(t("auth_err_app", "You do not have permission to access this app."));
       window.location.href = "/";
     }
   } catch (err) {

@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roots AI apps</title>
+  <title data-i18n="brand_title">Roots AI apps</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/index.css?v=2.0.1">
   <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
   <link rel="stylesheet" href="/css/admin.css?v=2.0.7">
+  <script src="/js/arabic.js?v=2"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
 </head>
 <body>
@@ -18,17 +19,17 @@
   <!-- Login Gateway -->
   <div id="global-login-screen" class="admin-overlay" style="display: none;">
     <div class="admin-card">
-      <h2>Welcome</h2>
-      <p style="margin-bottom: 20px; color: var(--dim)">Enter your username and password.</p>
-      <input type="text" id="global-username" placeholder="Username (e.g. Ahmad)" autocomplete="off" autofocus>
+      <h2 data-i18n="login_title">Login</h2>
+      <p style="margin-bottom: 20px; color: var(--dim)" data-i18n="login_subtitle">Enter your username and password.</p>
+      <input type="text" id="global-username" data-i18n-placeholder="login_username_placeholder" placeholder="Username (e.g. Ahmad)" autocomplete="off" autofocus>
       <div style="position: relative; margin-bottom: 16px;">
-        <input type="password" id="global-password" placeholder="Password" autocomplete="off" style="margin-bottom: 0;">
+        <input type="password" id="global-password" data-i18n-placeholder="login_password_placeholder" placeholder="Password" autocomplete="off" style="margin-bottom: 0;">
         <button id="toggle-password" type="button" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: auto; margin-bottom: 0; background: transparent; padding: 4px 8px; color: var(--dim); display: flex; align-items: center; justify-content: center;">
           <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
         </button>
       </div>
-      <button id="global-login-btn" class="btn-primary">Continue</button>
-      <div id="global-login-error" class="error-msg" style="display:none;">Invalid username or password</div>
+      <button id="global-login-btn" class="btn-primary" data-i18n="login_button">Log In</button>
+      <div id="global-login-error" class="error-msg" style="display:none;" data-i18n="invalid_credentials">Invalid username or password</div>
     </div>
   </div>
 

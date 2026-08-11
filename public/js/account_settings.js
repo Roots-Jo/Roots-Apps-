@@ -12,6 +12,8 @@ const db = getDatabase(app);
 
 const username = localStorage.getItem("roots-user");
 
+const t = (key, fb) => window.i18n && window.i18n.t(key) !== key ? window.i18n.t(key) : fb;
+
 // Toggle visibility functions
 const toggleNewPwd = document.getElementById('toggle-new-pwd');
 const newPwd = document.getElementById('new-password');
@@ -37,38 +39,38 @@ if (saveBtn) {
   saveBtn.addEventListener('click', async () => {
     const p1 = newPwd.value;
     const p2 = confirmPwd.value;
-    
+
     if (!p1 || !p2) {
-      errorMsg.textContent = "Please fill in both password fields.";
+      errorMsg.textContent = t("pwd_err_both", "Please fill in both password fields.");
       errorMsg.style.display = 'block';
       return;
     }
-    
+
     if (p1 !== p2) {
-      errorMsg.textContent = "Passwords do not match.";
+      errorMsg.textContent = t("pwd_err_match", "Passwords do not match.");
       errorMsg.style.display = 'block';
       return;
     }
-    
+
 
     try {
       errorMsg.style.display = 'none';
       saveBtn.disabled = true;
-      saveBtn.textContent = "Saving...";
-      
+      saveBtn.textContent = t("pwd_toast_saving", "Saving...");
+
       await update(ref(db, `users/${username}`), { password: p1 });
-      
-      alert("Password updated successfully!");
+
+      alert(t("pwd_ok_pass", "Password updated successfully!"));
       newPwd.value = '';
       confirmPwd.value = '';
       saveBtn.disabled = false;
-      saveBtn.textContent = "Update Password";
+      saveBtn.textContent = t("pwd_btn_update", "Update Password");
     } catch (e) {
       console.error("Failed to update password", e);
-      errorMsg.textContent = "Error updating password. Please try again.";
+      errorMsg.textContent = t("pwd_err_upd", "Error updating password. Please try again.");
       errorMsg.style.display = 'block';
       saveBtn.disabled = false;
-      saveBtn.textContent = "Update Password";
+      saveBtn.textContent = t("pwd_btn_update", "Update Password");
     }
   });
 }

@@ -17,6 +17,8 @@ const db = getDatabase(app);
 
 // Setup your new COD logic here
 
+const t = (key, fb) => window.i18n && window.i18n.t(key) !== key ? window.i18n.t(key) : fb;
+
 // Auto-detection Keywords
 const KEYWORDS_ID = ['order id', 'order_id', 'reference number', 'reference no', 'reference', 'tracking number'];
 const KEYWORDS_AMT = ['cod amount', 'net', 'sender duo amt', 'amount', 'total cod', 'cod', 'total'];
@@ -91,7 +93,7 @@ const ui = {
 ui.ordersFile.addEventListener('change', async (e) => {
   if (e.target.files.length > 0) {
     const file = e.target.files[0];
-    ui.ordersFileList.innerHTML = `<div class="dfn">${file.name} (Parsing...)</div>`;
+    ui.ordersFileList.innerHTML = `<div class="dfn">${file.name} (${t("cod_toast_parsing", "Parsing...")})</div>`;
     rootsFileObj = await parseFileForMapping(file, true);
     ui.ordersFileList.innerHTML = `<div class="dfn">${file.name}</div>`;
     ui.dropOrders.classList.add('loaded');
@@ -106,7 +108,7 @@ ui.ordersFile.addEventListener('change', async (e) => {
 ui.partnersFiles.addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
   if (files.length > 0) {
-    ui.partnersFileList.innerHTML = `<div class="dfn">Parsing ${files.length} file(s)...</div>`;
+    ui.partnersFileList.innerHTML = `<div class="dfn">${t("cod_toast_parsing", "Parsing...")} ${files.length} file(s)...</div>`;
     partnerFileObjs = [];
     for(let f of files) {
       partnerFileObjs.push(await parseFileForMapping(f, false));
@@ -245,7 +247,7 @@ function extractDetails(row, m) {
 // Run Reconciliation
 ui.runBtn.addEventListener('click', async () => {
   ui.runError.textContent = '';
-  ui.runBtn.textContent = 'Processing...';
+  ui.runBtn.textContent = t("cod_toast_processing", "Processing...");
   ui.runBtn.disabled = true;
 
   try {
@@ -399,7 +401,7 @@ ui.runBtn.addEventListener('click', async () => {
   } catch (err) {
     ui.runError.textContent = err.message;
   } finally {
-    ui.runBtn.textContent = 'Run Reconciliation';
+    ui.runBtn.textContent = t("cod_btn_run", "Run Reconciliation");
     ui.runBtn.disabled = false;
   }
 });
@@ -439,7 +441,7 @@ function renderMatched() {
   if (currentMatchedPage < 1) currentMatchedPage = 1;
   
   if (ui.matchedPageInfo) {
-      ui.matchedPageInfo.textContent = `Page ${currentMatchedPage} of ${totalPages} (${matchedOrders.length} records)`;
+      ui.matchedPageInfo.textContent = `${t("cod_page", "Page")} ${currentMatchedPage} ${t("cod_of", "of")} ${totalPages} (${matchedOrders.length} ${t("cod_records", "records")})`;
   }
   
   if (ui.matchedPrev) ui.matchedPrev.disabled = currentMatchedPage === 1;
@@ -476,7 +478,7 @@ function renderOutliers() {
   if (currentPage < 1) currentPage = 1;
   
   if (ui.outliersPageInfo) {
-      ui.outliersPageInfo.textContent = `Page ${currentPage} of ${totalPages} (${filteredOutliers.length} records)`;
+      ui.outliersPageInfo.textContent = `${t("cod_page", "Page")} ${currentPage} ${t("cod_of", "of")} ${totalPages} (${filteredOutliers.length} ${t("cod_records", "records")})`;
   }
   
   if (ui.outliersPrev) ui.outliersPrev.disabled = currentPage === 1;
@@ -653,7 +655,7 @@ function loadHistory() {
       onValue(metaRef, (metaSnap) => {
         const metaData = metaSnap.val();
         if (!metaData) {
-            if (ui.historyTableBody) ui.historyTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No runs found</td></tr>';
+            if (ui.historyTableBody) ui.historyTableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px;">${t("cod_toast_no_runs", "No runs found")}</td></tr>`;
             return;
         }
         
@@ -664,8 +666,8 @@ function loadHistory() {
           ui.historyTableBody.innerHTML = runs.map(r => {
             const isTransferred = r.isTransferred === true;
             const statusHtml = isTransferred 
-              ? `<span class="badge bc" style="cursor:pointer;" onclick="toggleRunStatus('${r.runId}', true)" title="Click to mark Pending">Transferred ✓</span>`
-              : `<span class="badge bo" style="cursor:pointer; background: #fff0eb; color: var(--orange);" onclick="toggleRunStatus('${r.runId}', false)" title="Click to mark Transferred">Pending</span>`;
+              ? `<span class="badge bc" style="cursor:pointer;" onclick="toggleRunStatus('${r.runId}', true)" title="Click to mark Pending">${t("cod_transferred", "Transferred ✓")}</span>`
+              : `<span class="badge bo" style="cursor:pointer; background: #fff0eb; color: var(--orange);" onclick="toggleRunStatus('${r.runId}', false)" title="Click to mark Transferred">${t("cod_pending", "Pending")}</span>`;
               
             return `
             <tr>
@@ -678,9 +680,9 @@ function loadHistory() {
               </td>
               <td>${statusHtml}</td>
               <td style="display: flex; gap: 5px;">
-                 <button class="pay-btn" style="background: var(--bg); color: var(--dark); border: 1px solid var(--bdr);" onclick="viewHistoryRun('${r.runId}', this)">View</button>
-                 <button class="pay-btn paid" onclick="downloadHistoryRun('${r.runId}', this)">Download</button>
-                 <button class="pay-btn" style="background: var(--rbg); color: var(--red); border: 1px solid #f5c2c7;" onclick="deleteHistoryRun('${r.runId}', this)">Delete</button>
+                 <button class="pay-btn" style="background: var(--bg); color: var(--dark); border: 1px solid var(--bdr);" onclick="viewHistoryRun('${r.runId}', this)">${t("cod_btn_view", "View")}</button>
+                 <button class="pay-btn paid" onclick="downloadHistoryRun('${r.runId}', this)">${t("cod_btn_download", "Download")}</button>
+                 <button class="pay-btn" style="background: var(--rbg); color: var(--red); border: 1px solid #f5c2c7;" onclick="deleteHistoryRun('${r.runId}', this)">${t("cod_btn_delete", "Delete")}</button>
               </td>
             </tr>
           `}).join('');
@@ -734,12 +736,12 @@ window.downloadHistoryRun = function(runId, btn) {
              const ts = window.codHistoryData[runId].timestamp;
              const d = new Date(ts).toISOString().slice(0,10);
              generateExcelFile(report, outliers, d).finally(() => {
-                 btn.textContent = 'Download';
+                 btn.textContent = t("cod_btn_download", "Download");
              });
         }
     }).catch(err => {
         alert("Failed to download: " + err.message);
-        btn.textContent = 'Download';
+        btn.textContent = t("cod_btn_download", "Download");
     });
 }
 

@@ -26,7 +26,7 @@ body {
   color: var(--text);
   font-family: var(--font);
   min-height: 100vh;
-  padding-top: 44px !important;
+  padding-top: 64px !important;
 }
 
 /* ── Shell & Layout ── */

@@ -3,46 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cases Tracker | Roots AI</title>
+  <title data-i18n="cases_title">Cases Tracker | Roots AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
   <link rel="stylesheet" href="/css/cases_tracker.css?v=1.0.10">
   <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-</head>
+<script src="/js/arabic.js?v=2"></script>
+  </head>
 <body>
 
   <div id="navbar"></div>
   <script src="/js/navbar.js?v=1.0.7"></script>
 
   <div id="app-shell" class="shell">
-    <header>
-      <div class="logo-wrap">
-        <div class="logo-icon">
-          <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-        </div>
-        <div class="logo-text">
-          <h1>Cases Tracker</h1>
-          <p>Shared · Team Workspace</p>
-        </div>
+
+    <nav class="tabs" style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex;">
+        <button class="tab-btn active" data-tab="cases" data-i18n="cases_tab_all">
+          <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          All Cases
+        </button>
+        <button class="tab-btn" data-tab="setup" data-i18n="cases_tab_merchants">
+          <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Merchants
+        </button>
       </div>
-      <div class="header-actions">
-        <button id="open-case-btn" class="btn-accent" style="padding: 9px 16px;">
+      <div class="header-actions" style="display: flex; gap: 10px; margin-right: 12px;">
+        <button id="open-case-btn" class="btn-accent" style="padding: 9px 16px;" data-i18n="cases_new_case">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
           New Case
         </button>
       </div>
-    </header>
-
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="cases">
-        <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-        All Cases
-      </button>
-      <button class="tab-btn" data-tab="setup">
-        <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Merchants
-      </button>
     </nav>
 
     <main>
@@ -55,18 +47,19 @@
         <div class="filters-bar">
           <div style="position: relative; width: 240px;">
             <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted);" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" id="filter-search" placeholder="Search orders, description..." style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text); outline: none;">
+            <input type="text" id="filter-search" data-i18n-placeholder="cases_search" placeholder="Search orders, description..." style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text); outline: none;">
           </div>
           <select id="filter-merchant" class="filter-select">
-            <option value="all">All Merchants</option>
+            <option value="all" data-i18n="cases_filter_merchants">All Merchants</option>
           </select>
           <select id="filter-status" class="filter-select">
-            <option value="all">All Statuses</option>
-            <option value="open">Open</option>
-            <option value="resolved">Resolved</option>
+            <option value="all" data-i18n="status_all">All Statuses</option>
+            <option value="unresolved" data-i18n="status_unresolved">Unresolved</option>
+            <option value="investigating" data-i18n="status_investigating">Investigating</option>
+            <option value="resolved" data-i18n="status_resolved">Resolved</option>
           </select>
           <select id="filter-charge" class="filter-select">
-            <option value="all">All Charges</option>
+            <option value="all" data-i18n="cases_filter_charges">All Charges</option>
             <option value="NONE">None</option>
             <option value="RS">RS</option>
             <option value="ADD">ADD</option>
@@ -76,49 +69,93 @@
           </select>
           <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text);">
             <input type="checkbox" id="show-desc-toggle" style="width: 15px; height: 15px; accent-color: var(--accent);">
-            Show Full Descriptions
+            <span data-i18n="cases_show_desc">Show Full Descriptions</span>
           </label>
-          <button id="export-csv-btn" class="btn-transparent" style="background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 7px 14px; margin-left: auto;">
+          
+          <div class="layout-toggles" style="display: flex; gap: 4px; margin-left: auto;">
+            <button id="layout-list-btn" class="layout-toggle-btn active" title="List View" style="background: transparent; color: var(--dim); padding: 6px;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <button id="layout-kanban-btn" class="layout-toggle-btn" title="Kanban View" style="background: transparent; color: var(--dim); padding: 6px;">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+            </button>
+          </div>
+
+          <button id="export-csv-btn" class="btn-transparent" style="background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 7px 14px; margin-left: 10px;" data-i18n="btn_csv">
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             CSV
           </button>
-          <button id="delete-selected-btn" class="btn-danger" style="margin-left: 10px; display: none;">Delete Selected</button>
+          <button id="delete-selected-btn" class="btn-danger" style="margin-left: 10px; display: none;" data-i18n="btn_delete_selected">Delete Selected</button>
         </div>
 
         <!-- Table -->
         <div id="cases-empty" class="empty-msg" style="display: none;">
-          <div style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">No cases yet</div>
-          <div style="font-size: 13px;">Add merchants in <b>Merchants</b> tab, then click <b>New Case</b>.</div>
+          <div style="font-size: 16px; font-weight: 700; margin-bottom: 6px;" data-i18n="cases_empty_title">No cases yet</div>
+          <div style="font-size: 13px;" data-i18n="cases_empty_sub">Add merchants in <b>Merchants</b> tab, then click <b>New Case</b>.</div>
         </div>
         <div class="cases-table-wrap" id="cases-table-wrap" style="display: none;">
           <table class="cases-table">
             <thead>
               <tr>
                 <th style="width: 40px;"><input type="checkbox" id="select-all-cases"></th>
-                <th>Merchant</th>
-                <th>Order ID</th>
-                <th>Description</th>
-                <th>Action Taken</th>
-                <th>Type / Charge</th>
-                <th>Date / Time</th>
-                <th>Status</th>
+                <th data-i18n="th_merchant">Merchant</th>
+                <th data-i18n="th_order_id">Order ID</th>
+                <th data-i18n="th_description">Description</th>
+                <th data-i18n="th_action_taken">Action Taken</th>
+                <th data-i18n="th_type_charge">Type / Charge</th>
+                <th data-i18n="th_datetime">Date / Time</th>
+                <th data-i18n="th_status">Status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="cases-tbody"></tbody>
           </table>
         </div>
+        
+        <!-- Kanban -->
+        <div class="cases-kanban-wrap" id="cases-kanban-wrap" style="display: none;">
+          <div class="kanban-column" data-status="unresolved">
+            <div class="kanban-column-header">
+              <div class="kanban-column-title">
+                <span data-i18n="status_unresolved">Unresolved</span>
+                <span class="kanban-count" id="count-unresolved">0</span>
+              </div>
+            </div>
+            <div class="kanban-cards" id="kanban-unresolved"></div>
+          </div>
+          
+          <div class="kanban-column" data-status="investigating">
+            <div class="kanban-column-header">
+              <div class="kanban-column-title">
+                <span data-i18n="status_investigating">Investigating</span>
+                <span class="kanban-count" id="count-investigating">0</span>
+              </div>
+            </div>
+            <div class="kanban-cards" id="kanban-investigating"></div>
+          </div>
+          
+          <div class="kanban-column" data-status="resolved">
+            <div class="kanban-column-header">
+              <div class="kanban-column-title">
+                <span data-i18n="status_resolved">Resolved</span>
+                <span class="kanban-count" id="count-resolved">0</span>
+              </div>
+            </div>
+            <div class="kanban-cards" id="kanban-resolved"></div>
+          </div>
+        </div>
+
       </section>
 
       <!-- Setup / Merchants View -->
       <section id="view-setup" class="view-section">
         <div class="setup-section">
-          <div class="setup-title">Merchants</div>
-          <div class="setup-sub">Add merchants and assign a color for quick visual identification.</div>
+          <div class="setup-title" data-i18n="cases_setup_merchants_title">Merchants</div>
+          <div class="setup-sub" data-i18n="cases_setup_merchants_sub">Add merchants and assign a color for quick visual identification.</div>
           <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
-            <input id="new-merchant-name" placeholder="Merchant name" style="flex: 2; min-width: 160px;">
+            <input id="new-merchant-name" data-i18n-placeholder="cases_merchant_name_ph" placeholder="Merchant name" style="flex: 2; min-width: 160px;">
             <input id="new-merchant-color" type="color" value="#F37828" style="width: 50px; height: 42px; padding: 4px; cursor: pointer; flex: 0 0 50px;">
-            <button id="add-merchant-btn" class="btn-accent" style="padding: 8px 16px; white-space: nowrap;">
+            <button id="add-merchant-btn" class="btn-accent" style="padding: 8px 16px; white-space: nowrap;" data-i18n="btn_add">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
               Add
             </button>
@@ -132,14 +169,14 @@
     <div id="case-modal" class="modal-overlay" style="display: none;">
       <div class="modal-content">
         <div class="modal-header">
-          <div class="modal-title">New Case</div>
+          <div class="modal-title" data-i18n="cases_modal_title">New Case</div>
           <button id="close-modal-btn" class="btn-transparent" style="padding: 4px;">
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
         <div class="form-field">
-          <label class="form-label">Merchant</label>
+          <label class="form-label" data-i18n="th_merchant">Merchant</label>
           <div style="position: relative; display: flex; align-items: center;">
             <div id="modal-merchant-color" style="width: 14px; height: 14px; border-radius: 50%; position: absolute; left: 12px; pointer-events: none; background: transparent;"></div>
             <select id="modal-merchant" style="padding-left: 34px;"></select>
@@ -147,22 +184,22 @@
         </div>
 
         <div class="form-field">
-          <label class="form-label">Order ID</label>
-          <input id="modal-order-id" placeholder="e.g. ORD-12345">
+          <label class="form-label" data-i18n="th_order_id">Order ID</label>
+          <input id="modal-order-id" data-i18n-placeholder="cases_ph_order_id" placeholder="e.g. ORD-12345">
         </div>
 
         <div class="form-field">
-          <label class="form-label">Description</label>
-          <textarea id="modal-description" placeholder="Describe the case..." rows="3" style="resize: vertical;"></textarea>
+          <label class="form-label" data-i18n="th_description">Description</label>
+          <textarea id="modal-description" data-i18n-placeholder="cases_ph_desc" placeholder="Describe the case..." rows="3" style="resize: vertical;"></textarea>
         </div>
 
         <div class="form-field">
-          <label class="form-label">Action Taken</label>
-          <textarea id="modal-action" placeholder="How was this case dealt with?" rows="2" style="resize: vertical;"></textarea>
+          <label class="form-label" data-i18n="th_action_taken">Action Taken</label>
+          <textarea id="modal-action" data-i18n-placeholder="cases_ph_action" placeholder="How was this case dealt with?" rows="2" style="resize: vertical;"></textarea>
         </div>
 
         <div class="form-field">
-          <label class="form-label">Type / Charge</label>
+          <label class="form-label" data-i18n="th_type_charge">Type / Charge</label>
           <select id="modal-charge">
             <option value="NONE">None</option>
             <option value="RS">RS</option>
@@ -172,13 +209,22 @@
             <option value="EX">EX</option>
           </select>
         </div>
+        
+        <div class="form-field">
+          <label class="form-label" data-i18n="th_status">Status</label>
+          <select id="modal-status">
+            <option value="unresolved" data-i18n="status_unresolved">Unresolved</option>
+            <option value="investigating" data-i18n="status_investigating">Investigating</option>
+            <option value="resolved" data-i18n="status_resolved">Resolved</option>
+          </select>
+        </div>
 
         <div class="form-field">
-          <label class="form-label">Date & Time</label>
+          <label class="form-label" data-i18n="th_datetime">Date & Time</label>
           <input id="modal-datetime" type="datetime-local">
         </div>
 
-        <button id="confirm-case-btn" class="btn-accent" style="padding: 14px 0; width: 100%; justify-content: center; font-size: 15px; border-radius: 10px;">
+        <button id="confirm-case-btn" class="btn-accent" style="padding: 14px 0; width: 100%; justify-content: center; font-size: 15px; border-radius: 10px;" data-i18n="cases_create_btn">
           Create Case
         </button>
       </div>
@@ -191,3 +237,6 @@
   <script type="module" src="/js/cases_tracker.js?v=1.0.9"></script>
 </body>
 </html>
+
+
+

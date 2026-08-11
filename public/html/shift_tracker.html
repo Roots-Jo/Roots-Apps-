@@ -3,40 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shift Tracker | Roots AI</title>
+  <title data-i18n="shift_title">Shift Tracker | Roots AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
   <link rel="stylesheet" href="/css/shift_tracker.css?v=1.0.1">
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-</head>
+<script src="/js/arabic.js?v=2"></script>
+  </head>
 <body>
 
   <div id="navbar"></div>
   <script src="/js/navbar.js?v=1.0.7"></script>
 
-  <div id="app-shell" class="shell">
-    <header>
-      <div class="logo-wrap">
-        <div class="logo-icon" style="color: #27ae60; background: rgba(39, 174, 96, 0.1);">
-          <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        </div>
-        <div class="logo-text">
-          <h1>Shift Tracker</h1>
-          <p>Punch In / Out & Payroll</p>
-        </div>
-      </div>
-    </header>
+  <div id="app-shell" class="shell">    <!-- Header removed as requested -->
 
     <nav class="tabs" id="admin-tabs" style="display: none;">
       <button class="tab-btn active" data-tab="punch">
         <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        My Shift
+        <span data-i18n="shift_tab_my">My Shift</span>
       </button>
       <button class="tab-btn" data-tab="admin">
         <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-        Admin Dashboard
+        <span data-i18n="shift_tab_admin">Admin Dashboard</span>
       </button>
     </nav>
 
@@ -57,11 +47,11 @@
         <!-- QR Scanner Modal -->
         <div id="qr-modal" class="qr-modal" style="display: none;">
           <div class="qr-modal-content">
-            <h2 id="qr-modal-title">Scan QR to Punch In</h2>
+            <h2 id="qr-modal-title" data-i18n="shift_qr_title_in">Scan QR to Punch In</h2>
             <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 20px auto;"></div>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
-              <button id="qr-flip-btn" class="btn-green" style="flex: 1; border: none; font-weight: 700; border-radius: 8px; cursor: pointer; color: #fff;">Flip Camera</button>
-              <button id="qr-cancel-btn" class="btn-danger" style="flex: 1; border: none; font-weight: 700; border-radius: 8px; cursor: pointer; color: #fff;">Cancel</button>
+              <button id="qr-flip-btn" class="btn-green" style="flex: 1; border: none; font-weight: 700; border-radius: 8px; cursor: pointer; color: #fff;" data-i18n="btn_flip_cam">Flip Camera</button>
+              <button id="qr-cancel-btn" class="btn-danger" style="flex: 1; border: none; font-weight: 700; border-radius: 8px; cursor: pointer; color: #fff;" data-i18n="btn_cancel">Cancel</button>
             </div>
           </div>
         </div>
@@ -71,27 +61,27 @@
       <section id="view-admin" class="view-section" style="display: none;">
         
         <div class="admin-section">
-          <div class="setup-title">Active Shifts</div>
-          <div class="setup-sub">Users currently punched in.</div>
+          <div class="setup-title" data-i18n="shift_active">Active Shifts</div>
+          <div class="setup-sub" data-i18n="shift_active_sub">Users currently punched in.</div>
           <div class="active-shifts-grid" id="active-shifts-container">
-            <div class="empty-msg" style="display: block;">No active shifts.</div>
+            <div class="empty-msg" style="display: block;" data-i18n="shift_no_active">No active shifts.</div>
           </div>
         </div>
 
         <div class="admin-section" style="margin-top: 40px;">
-          <div class="setup-title">Shift History & Payroll</div>
-          <div class="setup-sub">Completed shifts with calculated pay at 2 JOD/hr.</div>
+          <div class="setup-title" data-i18n="shift_history">Shift History & Payroll</div>
+          <div class="setup-sub" data-i18n="shift_history_sub">Completed shifts with calculated pay at 2 JOD/hr.</div>
           
           <div class="filters-bar" style="margin-top: 16px; justify-content: space-between;">
             <div style="display: flex; gap: 10px;">
               <select id="filter-user" class="filter-select">
-                <option value="all">All Users</option>
+                <option value="all" data-i18n="shift_all_users">All Users</option>
               </select>
               <select id="filter-week" class="filter-select">
-                <option value="all">All Weeks</option>
+                <option value="all" data-i18n="shift_all_weeks">All Weeks</option>
               </select>
             </div>
-            <button id="delete-selected-btn" class="btn-danger" style="display: none;">Delete Selected</button>
+            <button id="delete-selected-btn" class="btn-danger" style="display: none;" data-i18n="btn_delete_selected">Delete Selected</button>
           </div>
 
           <div class="cases-table-wrap">
@@ -99,20 +89,20 @@
               <thead>
                 <tr>
                   <th style="width: 40px;"><input type="checkbox" id="select-all-shifts"></th>
-                  <th>User</th>
-                  <th>Date</th>
-                  <th>Day</th>
-                  <th>Start Time</th>
-                  <th>End Time</th>
-                  <th>Duration</th>
-                  <th>Pay (JOD)</th>
+                  <th data-i18n="th_user">User</th>
+                  <th data-i18n="th_date">Date</th>
+                  <th data-i18n="th_day">Day</th>
+                  <th data-i18n="th_start">Start Time</th>
+                  <th data-i18n="th_end">End Time</th>
+                  <th data-i18n="th_duration">Duration</th>
+                  <th data-i18n="th_pay">Pay (JOD)</th>
                   <th style="width: 40px;"></th>
                 </tr>
               </thead>
               <tbody id="history-tbody"></tbody>
               <tfoot id="history-tfoot">
                 <tr>
-                  <td colspan="7" style="text-align: right; font-weight: 700;">Total:</td>
+                  <td colspan="7" style="text-align: right; font-weight: 700;" data-i18n="shift_total">Total:</td>
                   <td colspan="2" id="history-total-pay" style="font-weight: 800; color: var(--accent);">0.00 JOD</td>
                 </tr>
               </tfoot>
@@ -127,3 +117,6 @@
   <script type="module" src="/js/shift_tracker.js?v=1.0.6"></script>
 </body>
 </html>
+
+
+

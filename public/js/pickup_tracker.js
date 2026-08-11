@@ -26,6 +26,8 @@ let state = {
   editingPickupId: null
 };
 
+const t = (key, fb) => window.i18n && window.i18n.t(key) !== key ? window.i18n.t(key) : fb;
+
 // --- Icons (Same as JSX) ---
 const I = {
   trash: `<svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
@@ -81,13 +83,13 @@ window.addDriver = async (name) => {
   if (!name.trim()) return;
   const drivers = [...(state.config.drivers || []), { id: uid(), name: name.trim() }];
   await cloudUpdate("config/drivers", drivers);
-  flash("Driver added");
+  flash(t("coll_toast_driver_add", "Driver added"));
 };
 
 window.rmDriver = async (id) => {
   const drivers = (state.config.drivers || []).filter(d => d.id !== id);
   await cloudUpdate("config/drivers", drivers);
-  flash("Driver removed");
+  flash(t("coll_toast_driver_rm", "Driver removed"));
 };
 
 window.addLocation = async (name, rate) => {
@@ -99,7 +101,7 @@ window.addLocation = async (name, rate) => {
     "config/locations": locations,
     [`config/rates/${id}`]: parseFloat(rate) || 0
   });
-  flash("Location added");
+  flash(t("coll_toast_loc_add", "Location added"));
 };
 
 window.rmLocation = async (id) => {
@@ -110,7 +112,7 @@ window.rmLocation = async (id) => {
     "config/locations": locations,
     [`config/rates/${id}`]: null
   });
-  flash("Location removed");
+  flash(t("coll_toast_loc_rm", "Location removed"));
 };
 
 window.setRate = async (id, v) => {
@@ -144,7 +146,7 @@ window.addPickup = async (p) => {
   delete newPickup.date;
 
   await cloudUpdate(`pickups/${id}`, newPickup);
-  flash("Pickup logged ✓");
+  flash(t("coll_toast_logged", "Pickup logged ✓"));
   closeModal();
 };
 
@@ -158,8 +160,8 @@ window.editPickup = (id) => {
   openModal();
   
   // Change Title and Button text
-  document.querySelector("#pickup-modal .modal-title").textContent = "Edit Pickup";
-  document.getElementById("confirm-pickup-btn").textContent = "Save Changes";
+  document.querySelector("#pickup-modal .modal-title").textContent = t("cases_modal_edit", "Edit Pickup");
+  document.getElementById("confirm-pickup-btn").textContent = t("cases_update_btn", "Save Changes");
   
   // Set values
   document.getElementById("modal-driver").value = p.driverId;
@@ -220,26 +222,26 @@ window.saveEditedPickup = async (p) => {
   }
 
   await cloudUpdate(`pickups/${p.id}`, updatedPickup);
-  flash("Pickup updated ✓");
+  flash(t("coll_toast_updated", "Pickup updated ✓"));
   closeModal();
 };
 
 window.rmPickup = async (id) => {
   if (!confirm("Delete this log?")) return;
   await remove(ref(db, `trackers/pickup-tracker-v2/pickups/${id}`));
-  flash("Deleted");
+  flash(t("coll_toast_deleted", "Deleted"));
 };
 
 window.togglePaid = async (id, val) => {
   const isPaid = val === 'paid';
   await cloudUpdate(`pickups/${id}/paid`, isPaid);
-  flash(isPaid ? "Marked as Paid" : "Marked as Not Paid");
+  flash(isPaid ? t("coll_toast_paid", "Marked as Paid") : t("coll_toast_unpaid", "Marked as Not Paid"));
 };
 
 window.resetAll = async () => {
   if (!confirm("⚠️ This will delete ALL shared data for every team member. Continue?")) return;
   await set(trackerRef, null);
-  flash("All data reset");
+  flash(t("coll_toast_reset", "All data reset"));
 };
 
 // --- UI Handlers ---
@@ -275,7 +277,7 @@ function openModal() {
     
     const mSel = document.getElementById("modal-pickup-merchant");
     if (mSel) {
-      mSel.innerHTML = '<option value="">None</option>' + Object.entries(state.merchants).map(([id, m]) => `<option value="${id}">${m.name}</option>`).join("");
+      mSel.innerHTML = `<option value="">${t("coll_none", "None")}</option>` + Object.entries(state.merchants).map(([id, m]) => `<option value="${id}">${m.name}</option>`).join("");
     }
     
     // Default time
@@ -290,8 +292,8 @@ function openModal() {
 
     // Reset Title and Button text for Log mode
     if (!state.editingPickupId) {
-      document.querySelector("#pickup-modal .modal-title").textContent = "Log Pickup";
-      document.getElementById("confirm-pickup-btn").textContent = "Confirm Pickup";
+      document.querySelector("#pickup-modal .modal-title").textContent = t("coll_modal_title", "Log Pickup");
+      document.getElementById("confirm-pickup-btn").textContent = t("coll_confirm_btn", "Confirm Pickup");
       
       // Clear inputs
       document.getElementById("modal-items").value = "";
@@ -363,24 +365,24 @@ function renderDashboard() {
   // Stats
   statsEl.innerHTML = `
     <div class="stat-card">
-      <div class="stat-label">Total Pickups</div>
+      <div class="stat-label">${t("coll_stat_total", "Total Pickups")}</div>
       <div class="stat-value">${state.pickups.length}</div>
-      <div class="stat-sub">all time</div>
+      <div class="stat-sub">${t("coll_stat_all_time", "all time")}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Total Cost</div>
+      <div class="stat-label">${t("coll_stat_cost", "Total Cost")}</div>
       <div class="stat-value">${fmtCur(totalCost)}</div>
-      <div class="stat-sub">all time</div>
+      <div class="stat-sub">${t("coll_stat_all_time", "all time")}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">This Month</div>
+      <div class="stat-label">${t("coll_stat_month", "This Month")}</div>
       <div class="stat-value" style="color: var(--accent)">${fmtCur(monthCost)}</div>
-      <div class="stat-sub">${monthPicks.length} pickups</div>
+      <div class="stat-sub">${monthPicks.length} ${t("coll_stat_pickups", "pickups")}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Avg / Trip</div>
+      <div class="stat-label">${t("coll_stat_avg", "Avg / Trip")}</div>
       <div class="stat-value" style="color: var(--green)">${fmtCur(totalCost / state.pickups.length)}</div>
-      <div class="stat-sub">overall</div>
+      <div class="stat-sub">${t("coll_stat_overall", "overall")}</div>
     </div>
   `;
 
@@ -400,7 +402,7 @@ function renderDashboard() {
 
   chartsEl.innerHTML = `
     <div class="chart-card">
-      <div class="chart-title">Cost by Driver</div>
+      <div class="chart-title">${t("coll_chart_driver", "Cost by Driver")}</div>
       ${state.config.drivers.map(d => {
         const cost = byDriver[d.id] || 0;
         const trips = tripsByDriver[d.id] || 0;
@@ -418,7 +420,7 @@ function renderDashboard() {
       }).join("")}
     </div>
     <div class="chart-card">
-      <div class="chart-title">Cost by Location</div>
+      <div class="chart-title">${t("coll_chart_loc", "Cost by Location")}</div>
       ${state.config.locations.map(l => {
         const cost = byLoc[l.id] || 0;
         const trips = tripsByLoc[l.id] || 0;
@@ -448,17 +450,17 @@ function renderDashboard() {
   const lSel = document.getElementById("filter-location");
   const mSel = document.getElementById("filter-month");
 
-  dSel.innerHTML = '<option value="all">All Drivers</option>';
+  dSel.innerHTML = `<option value="all">${t("coll_filter_drivers", "All Drivers")}</option>`;
   state.config.drivers.forEach(d => dSel.add(new Option(d.name, d.id)));
   [...new Set(state.pickups.map(p => p.driverId))].forEach(id => {
-    if (!state.config.drivers.some(d => d.id === id)) dSel.add(new Option("Deleted Driver", id));
+    if (!state.config.drivers.some(d => d.id === id)) dSel.add(new Option(t("coll_deleted_driver", "Deleted Driver"), id));
   });
   if (Array.from(dSel.options).some(o => o.value === dF)) dSel.value = dF;
 
-  lSel.innerHTML = '<option value="all">All Locations</option>';
+  lSel.innerHTML = `<option value="all">${t("coll_filter_locations", "All Locations")}</option>`;
   state.config.locations.forEach(l => lSel.add(new Option(l.name, l.id)));
   [...new Set(state.pickups.map(p => p.locationId))].forEach(id => {
-    if (!state.config.locations.some(l => l.id === id)) lSel.add(new Option("Deleted Location", id));
+    if (!state.config.locations.some(l => l.id === id)) lSel.add(new Option(t("coll_deleted_loc", "Deleted Location"), id));
   });
   if (Array.from(lSel.options).some(o => o.value === lF)) lSel.value = lF;
   
@@ -467,10 +469,10 @@ function renderDashboard() {
     return `${d.getFullYear()}-${d.getMonth()}`;
   }))].sort().reverse();
   
-  mSel.innerHTML = '<option value="all">All Months</option>';
+  mSel.innerHTML = `<option value="all">${t("coll_filter_months", "All Months")}</option>`;
   uniqueMonths.forEach(m => {
     const [y, mo] = m.split("-");
-    const label = new Date(parseInt(y), parseInt(mo)).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    const label = new Date(parseInt(y), parseInt(mo)).toLocaleDateString(window.i18n && window.i18n.currentLang === 'ar' ? 'ar-EG' : 'en-US', { month: "short", year: "numeric" });
     mSel.add(new Option(label, m));
   });
   if (Array.from(mSel.options).some(o => o.value === mF)) mSel.value = mF;
@@ -511,8 +513,8 @@ function renderDashboard() {
       const typeHtml = p.type === 'Delivery' ? `<span class="status-badge" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">🚚 Delivery</span>` : `<span class="status-badge" style="background: rgba(243, 120, 40, 0.1); color: var(--accent);">📦 Pickup</span>`;
       
       const paidSel = `<select onchange="togglePaid('${p.id}', this.value)" style="appearance: none; -webkit-appearance: none; color: white !important; background: ${p.paid ? 'var(--green)' : 'var(--red)'} !important; border: none; border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; outline: none; text-align: center;">
-        <option value="unpaid" ${!p.paid ? 'selected' : ''} style="color: var(--text); background: var(--card);">Not Paid</option>
-        <option value="paid" ${p.paid ? 'selected' : ''} style="color: var(--text); background: var(--card);">Paid</option>
+        <option value="unpaid" ${!p.paid ? 'selected' : ''} style="color: var(--text); background: var(--card);">${t("coll_not_paid", "Not Paid")}</option>
+        <option value="paid" ${p.paid ? 'selected' : ''} style="color: var(--text); background: var(--card);">${t("coll_paid", "Paid")}</option>
       </select>`;
 
       return `
@@ -527,13 +529,13 @@ function renderDashboard() {
           <td>${loc}</td>
           <td>
             <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted);">
-              ${p.type === 'Delivery' && p.merchantId ? `<div><span style="font-weight: 600;">Merchant:</span> ${state.merchants[p.merchantId]?.name || 'Unknown'}</div>` : ''}
-              ${p.type === 'Delivery' && p.orderId ? `<div><span style="font-weight: 600;">Order:</span> ${p.orderId}</div>` : ''}
-              ${p.type === 'Delivery' && p.codAmount ? `<div><span style="font-weight: 600;">COD:</span> ${fmtCur(p.codAmount)}</div>` : ''}
-              ${p.arrivalTime ? `<div><span style="color: var(--green);">🏭 Arrived:</span> ${p.arrivalTime}</div>` : ''}
-              ${p.items ? `<div><span style="font-weight: 600;">Items:</span> ${p.items}</div>` : ''}
-              ${p.notes ? `<div><span style="font-weight: 600;">Notes:</span> <span style="font-style: italic;">"${p.notes}"</span></div>` : ''}
-              ${p.loggedBy ? `<div><span style="font-weight: 600;">By:</span> ${p.loggedBy}</div>` : ''}
+              ${p.type === 'Delivery' && p.merchantId ? `<div><span style="font-weight: 600;">${t("th_merchant", "Merchant")}:</span> ${state.merchants[p.merchantId]?.name || t("cases_unknown_merchant", "Unknown")}</div>` : ''}
+              ${p.type === 'Delivery' && p.orderId ? `<div><span style="font-weight: 600;">${t("coll_th_order", "Order:")}</span> ${p.orderId}</div>` : ''}
+              ${p.type === 'Delivery' && p.codAmount ? `<div><span style="font-weight: 600;">${t("coll_th_cod", "COD:")}</span> ${fmtCur(p.codAmount)}</div>` : ''}
+              ${p.arrivalTime ? `<div><span style="color: var(--green);">🏭 ${t("coll_th_arrived", "Arrived:")}</span> ${p.arrivalTime}</div>` : ''}
+              ${p.items ? `<div><span style="font-weight: 600;">${t("coll_th_items", "Items:")}</span> ${p.items}</div>` : ''}
+              ${p.notes ? `<div><span style="font-weight: 600;">${t("coll_th_notes", "Notes:")}</span> <span style="font-style: italic;">"${p.notes}"</span></div>` : ''}
+              ${p.loggedBy ? `<div><span style="font-weight: 600;">${t("coll_th_by", "By:")}</span> ${p.loggedBy}</div>` : ''}
             </div>
           </td>
           <td>${paidSel}</td>
@@ -634,7 +636,7 @@ function init() {
   };
 
   document.getElementById("reset-all-btn").onclick = window.resetAll;
-  document.getElementById("refresh-btn").onclick = () => { renderAll(); flash("Refreshed"); };
+  document.getElementById("refresh-btn").onclick = () => { renderAll(); flash(t("coll_toast_refreshed", "Refreshed")); };
 
   document.getElementById("confirm-pickup-btn").onclick = () => {
     const driverId = document.getElementById("modal-driver").value;
@@ -732,7 +734,7 @@ function exportCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = `pickups_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
-  flash("CSV exported");
+  flash(t("coll_toast_csv", "CSV exported"));
 }
 
 init();

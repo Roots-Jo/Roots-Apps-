@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Update Password - Roots AI Apps</title>
+  <title data-i18n="pwd_title">Update Password - Roots AI Apps</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
   <link rel="stylesheet" href="/css/index.css?v=2.0.1">
   <link rel="stylesheet" href="/css/admin.css?v=2.0.7">
   <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-</head>
+<script src="/js/arabic.js?v=2"></script>
+  </head>
 <body>
 
   <div id="navbar"></div>
@@ -18,33 +19,33 @@
 
   <div id="admin-dashboard">
     <div class="admin-header">
-      <h1>Update Password</h1>
+      <h1 data-i18n="pwd_header">Update Password</h1>
     </div>
 
     <div class="admin-content" style="display: flex; justify-content: center; margin-top: 40px;">
       <div class="admin-card" style="max-width: 400px; width: 100%; text-align: left; padding: 32px;">
-        <h2 style="margin-bottom: 24px; text-align: center;">Update Password</h2>
+        <h2 style="margin-bottom: 24px; text-align: center;" data-i18n="pwd_header_sub">Update Password</h2>
         <div style="display: flex; flex-direction: column;">
           <div style="margin-bottom: 16px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: var(--text);">New Password</label>
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: var(--text);" data-i18n="pwd_lbl_new">New Password</label>
             <div style="position: relative;">
-              <input type="password" id="new-password" placeholder="Enter new password" autocomplete="off" style="margin-bottom: 0; padding-right: 40px;">
+              <input type="password" id="new-password" data-i18n-placeholder="pwd_ph_new" placeholder="Enter new password" autocomplete="off" style="margin-bottom: 0; padding-right: 40px;">
               <button id="toggle-new-pwd" type="button" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: auto; background: transparent; border: none; padding: 4px; color: var(--dim); cursor: pointer; display: flex; align-items: center;">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
               </button>
             </div>
           </div>
           <div style="margin-bottom: 16px;">
-            <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: var(--text);">Confirm New Password</label>
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: var(--text);" data-i18n="pwd_lbl_confirm">Confirm New Password</label>
             <div style="position: relative;">
-              <input type="password" id="confirm-password" placeholder="Re-type new password" autocomplete="off" style="margin-bottom: 0; padding-right: 40px;">
+              <input type="password" id="confirm-password" data-i18n-placeholder="pwd_ph_confirm" placeholder="Re-type new password" autocomplete="off" style="margin-bottom: 0; padding-right: 40px;">
               <button id="toggle-confirm-pwd" type="button" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: auto; background: transparent; border: none; padding: 4px; color: var(--dim); cursor: pointer; display: flex; align-items: center;">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
               </button>
             </div>
           </div>
-          <div id="pwd-error" style="color: #ff4d4d; display: none; font-size: 14px; margin-bottom: 16px; text-align: center;">Passwords do not match.</div>
-          <button id="save-password-btn" class="btn-primary" style="padding: 12px; font-size: 15px;">Update Password</button>
+          <div id="pwd-error" style="color: #ff4d4d; display: none; font-size: 14px; margin-bottom: 16px; text-align: center;" data-i18n="pwd_err_match">Passwords do not match.</div>
+          <button id="save-password-btn" class="btn-primary" style="padding: 12px; font-size: 15px;" data-i18n="pwd_btn_update">Update Password</button>
         </div>
       </div>
     </div>
@@ -53,3 +54,6 @@
   <script type="module" src="/js/account_settings.js?v=1.0.0"></script>
 </body>
 </html>
+
+
+

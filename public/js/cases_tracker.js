@@ -17,6 +17,9 @@ const db = getDatabase(app);
 
 let merchants = {};
 let cases = {};
+let currentLayout = localStorage.getItem("cases_layout") || "list";
+
+const t = (key, fb) => window.i18n && window.i18n.t(key) !== key ? window.i18n.t(key) : fb;
 
 // ── Toast ──
 function showToast(msg) {
@@ -25,6 +28,26 @@ function showToast(msg) {
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2500);
 }
+
+// ── Layout Toggles ──
+const listBtn = document.getElementById("layout-list-btn");
+const kanbanBtn = document.getElementById("layout-kanban-btn");
+if (listBtn && kanbanBtn) {
+  listBtn.addEventListener("click", () => { currentLayout = "list"; localStorage.setItem("cases_layout", "list"); renderLayoutToggle(); renderCases(); });
+  kanbanBtn.addEventListener("click", () => { currentLayout = "kanban"; localStorage.setItem("cases_layout", "kanban"); renderLayoutToggle(); renderCases(); });
+}
+
+function renderLayoutToggle() {
+  if (!listBtn || !kanbanBtn) return;
+  if (currentLayout === "list") {
+    listBtn.classList.add("active");
+    kanbanBtn.classList.remove("active");
+  } else {
+    kanbanBtn.classList.add("active");
+    listBtn.classList.remove("active");
+  }
+}
+renderLayoutToggle();
 
 // ── Tabs ──
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -66,7 +89,7 @@ function renderMerchants() {
   const entries = Object.entries(merchants);
 
   if (entries.length === 0) {
-    list.innerHTML = '<div style="color: var(--muted); font-size: 13px;">No merchants yet. Add one above.</div>';
+    list.innerHTML = `<div style="color: var(--muted); font-size: 13px;">${t("cases_no_merchants", "No merchants yet. Add one above.")}</div>`;
     return;
   }
 
@@ -86,7 +109,7 @@ function renderMerchants() {
 function populateMerchantFilter() {
   const sel = document.getElementById("filter-merchant");
   const current = sel.value;
-  sel.innerHTML = '<option value="all">All Merchants</option>';
+  sel.innerHTML = `<option value="all">${t("cases_filter_merchants", "All Merchants")}</option>`;
   Object.entries(merchants).forEach(([id, m]) => {
     sel.innerHTML += `<option value="${id}">${m.name}</option>`;
   });
@@ -98,7 +121,7 @@ function populateModalMerchant() {
   sel.innerHTML = "";
   const entries = Object.entries(merchants);
   if (entries.length === 0) {
-    sel.innerHTML = '<option value="">— Add a merchant first —</option>';
+    sel.innerHTML = `<option value="">${t("cases_add_merchant_first", "— Add a merchant first —")}</option>`;
     return;
   }
   entries.forEach(([id, m]) => {
@@ -152,7 +175,12 @@ window.updateMerchantColor = async (id, newColor) => {
 
 function loadCases() {
   onValue(ref(db, "cases_tracker/cases"), (snap) => {
-    cases = snap.val() || {};
+    const raw = snap.val() || {};
+    cases = {};
+    for (const [id, c] of Object.entries(raw)) {
+      if (c.status === "open" || !c.status) c.status = "unresolved"; // legacy mapping
+      cases[id] = c;
+    }
     renderCases();
   });
 }
@@ -161,6 +189,7 @@ function renderCases() {
   const tbody = document.getElementById("cases-tbody");
   const emptyEl = document.getElementById("cases-empty");
   const tableWrap = document.getElementById("cases-table-wrap");
+  const kanbanWrap = document.getElementById("cases-kanban-wrap");
   const statsEl = document.getElementById("cases-stats");
 
   // Get filter values
@@ -197,38 +226,50 @@ function renderCases() {
   // Stats (from all cases, not filtered)
   const allEntries = Object.values(cases);
   const totalCases = allEntries.length;
-  const openCases = allEntries.filter(c => c.status === "open").length;
+  const unresolvedCases = allEntries.filter(c => c.status === "unresolved").length;
+  const investigatingCases = allEntries.filter(c => c.status === "investigating").length;
   const resolvedCases = allEntries.filter(c => c.status === "resolved").length;
 
   statsEl.innerHTML = `
     <div class="stat-card">
-      <div class="stat-label">Total Cases</div>
+      <div class="stat-label">${t("cases_stats_total", "Total Cases")}</div>
       <div class="stat-val">${totalCases}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Open</div>
-      <div class="stat-val" style="color: var(--red);">${openCases}</div>
+      <div class="stat-label">${t("status_unresolved", "Unresolved")}</div>
+      <div class="stat-val" style="color: var(--red);">${unresolvedCases}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Resolved</div>
+      <div class="stat-label">${t("status_investigating", "Investigating")}</div>
+      <div class="stat-val" style="color: var(--amber);">${investigatingCases}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">${t("status_resolved", "Resolved")}</div>
       <div class="stat-val" style="color: var(--green);">${resolvedCases}</div>
     </div>
   `;
 
   if (entries.length === 0) {
     emptyEl.style.display = "block";
-    tableWrap.style.display = "none";
+    if (tableWrap) tableWrap.style.display = "none";
+    if (kanbanWrap) kanbanWrap.style.display = "none";
     return;
   }
 
   emptyEl.style.display = "none";
-  tableWrap.style.display = "block";
+  if (currentLayout === "list") {
+    if (tableWrap) tableWrap.style.display = "block";
+    if (kanbanWrap) kanbanWrap.style.display = "none";
+  } else {
+    if (tableWrap) tableWrap.style.display = "none";
+    if (kanbanWrap) kanbanWrap.style.display = "flex";
+  }
 
+  // ── Render List View ──
   tbody.innerHTML = entries.map(([id, c]) => {
-    const m = merchants[c.merchantId] || { name: "Unknown", color: "#999" };
-    const isOpen = c.status === "open";
-    const statusClass = isOpen ? "status-open" : "status-resolved";
-    const statusLabel = isOpen ? "Open" : "Resolved";
+    const m = merchants[c.merchantId] || { name: t("cases_unknown_merchant", "Unknown"), color: "#999" };
+    const statusClass = `status-${c.status}`;
+    const statusLabel = t(`status_${c.status}`, c.status.charAt(0).toUpperCase() + c.status.slice(1));
 
     // Format datetime
     let dtDisplay = "—";
@@ -258,7 +299,7 @@ function renderCases() {
         <td><span class="charge-badge ${chargeBadgeClass}">${chargeVal}</span></td>
         <td style="font-size: 12px; white-space: nowrap;">${dtDisplay}</td>
         <td>
-          <span class="status-badge ${statusClass}" onclick="toggleStatus('${id}')" title="Click to toggle">
+          <span class="status-badge ${statusClass}" onclick="toggleStatus('${id}')" title="Click to cycle status">
             <span class="status-dot"></span>
             ${statusLabel}
           </span>
@@ -283,6 +324,118 @@ function renderCases() {
     selectAllCases.indeterminate = false;
   }
   updateBulkDeleteBtn();
+
+  // ── Render Kanban View ──
+  renderKanban(entries);
+}
+
+function renderKanban(entries) {
+  const cols = ["unresolved", "investigating", "resolved"];
+  cols.forEach(status => {
+    const colEl = document.getElementById(`kanban-${status}`);
+    const countEl = document.getElementById(`count-${status}`);
+    if (!colEl || !countEl) return;
+    
+    const colCases = entries.filter(([, c]) => c.status === status);
+    countEl.textContent = colCases.length;
+    
+    colEl.innerHTML = colCases.map(([id, c]) => {
+      const m = merchants[c.merchantId] || { name: t("cases_unknown_merchant", "Unknown"), color: "#999" };
+      
+      const rawCharge = c.charge || "NONE";
+      const chargeVal = rawCharge === "NONE" ? "None" : rawCharge;
+      const chargeBadgeClass = `charge-${rawCharge.toLowerCase()}`;
+      
+      let dtDisplay = "—";
+      if (c.datetime) {
+        const dt = new Date(c.datetime);
+        dtDisplay = dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+      }
+
+      return `
+        <div class="kanban-card" draggable="true" data-id="${id}">
+          <div class="kanban-card-header">
+            <span class="merchant-badge" style="background: ${m.color}18; color: ${m.color}; padding: 3px 8px; font-size: 11px;">
+              <span class="merchant-dot" style="background: ${m.color}; width: 6px; height: 6px;"></span>
+              ${m.name}
+            </span>
+            <span class="kanban-order-id">${c.orderId || "—"}</span>
+          </div>
+          <div class="kanban-card-body">${c.description || "—"}</div>
+          <div class="kanban-card-footer">
+            <span class="charge-badge ${chargeBadgeClass}">${chargeVal}</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span style="font-size: 11px; color: var(--muted);">${dtDisplay}</span>
+              <button class="btn-action btn-edit" onclick="editCase('${id}')" title="Edit case">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  });
+
+  setupKanbanDragAndDrop();
+}
+
+function setupKanbanDragAndDrop() {
+  const cards = document.querySelectorAll('.kanban-card');
+  const columns = document.querySelectorAll('.kanban-column');
+
+  cards.forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      card.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+    });
+    
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+    });
+  });
+
+  columns.forEach(column => {
+    column.addEventListener('dragover', e => {
+      e.preventDefault();
+      const afterElement = getDragAfterElement(column.querySelector('.kanban-cards'), e.clientY);
+      const draggable = document.querySelector('.dragging');
+      if (draggable) {
+        const container = column.querySelector('.kanban-cards');
+        if (afterElement == null) {
+          container.appendChild(draggable);
+        } else {
+          container.insertBefore(draggable, afterElement);
+        }
+      }
+    });
+
+    column.addEventListener('drop', async e => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
+      const newStatus = column.dataset.status;
+      if (id && cases[id] && cases[id].status !== newStatus) {
+        try {
+          await update(ref(db, `cases_tracker/cases/${id}`), { status: newStatus });
+          showToast(`Case moved to ${newStatus}`);
+        } catch (error) {
+          console.error("Failed to move case", error);
+        }
+      }
+    });
+  });
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.kanban-card:not(.dragging)')];
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child }
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 function updateBulkDeleteBtn() {
@@ -291,7 +444,7 @@ function updateBulkDeleteBtn() {
   const checkedCount = document.querySelectorAll(".case-checkbox:checked").length;
   if (checkedCount > 0) {
     btn.style.display = "inline-block";
-    btn.textContent = `Delete Selected (${checkedCount})`;
+    btn.textContent = `${t("btn_delete_selected", "Delete Selected")} (${checkedCount})`;
   } else {
     btn.style.display = "none";
   }
@@ -340,16 +493,18 @@ if (deleteSelectedBtn) {
   });
 }
 
-// Toggle status
+// Cycle status
 window.toggleStatus = async (id) => {
   const c = cases[id];
   if (!c) return;
-  const newStatus = c.status === "open" ? "resolved" : "open";
+  const statuses = ["unresolved", "investigating", "resolved"];
+  const currentIndex = statuses.indexOf(c.status);
+  const newStatus = statuses[(currentIndex + 1) % statuses.length];
   try {
     await update(ref(db, `cases_tracker/cases/${id}`), { status: newStatus });
     showToast(`Case marked as ${newStatus}`);
   } catch (e) {
-    console.error("Failed to toggle status", e);
+    console.error("Failed to cycle status", e);
   }
 };
 
@@ -399,8 +554,8 @@ document.getElementById("open-case-btn").addEventListener("click", () => {
   }
   
   editingCaseId = null;
-  document.querySelector(".modal-title").textContent = "New Case";
-  document.getElementById("confirm-case-btn").textContent = "Create Case";
+  document.querySelector(".modal-title").textContent = t("cases_modal_title", "New Case");
+  document.getElementById("confirm-case-btn").textContent = t("cases_create_btn", "Create Case");
 
   // Set default datetime to now
   const now = new Date();
@@ -413,6 +568,7 @@ document.getElementById("open-case-btn").addEventListener("click", () => {
   document.getElementById("modal-description").value = "";
   document.getElementById("modal-action").value = "";
   document.getElementById("modal-charge").value = "NONE";
+  document.getElementById("modal-status").value = "unresolved"; // new default
   
   // Set default merchant color
   setTimeout(updateModalMerchantColor, 0);
@@ -425,14 +581,15 @@ window.editCase = (id) => {
   if (!c) return;
 
   editingCaseId = id;
-  document.querySelector(".modal-title").textContent = "Edit Case";
-  document.getElementById("confirm-case-btn").textContent = "Update Case";
+  document.querySelector(".modal-title").textContent = t("cases_modal_edit", "Edit Case");
+  document.getElementById("confirm-case-btn").textContent = t("cases_update_btn", "Update Case");
 
   document.getElementById("modal-merchant").value = c.merchantId || "";
   document.getElementById("modal-order-id").value = c.orderId || "";
   document.getElementById("modal-description").value = c.description || "";
   document.getElementById("modal-action").value = c.action || "";
   document.getElementById("modal-charge").value = c.charge || "NONE";
+  document.getElementById("modal-status").value = c.status || "unresolved";
   document.getElementById("modal-datetime").value = c.datetime ? c.datetime.slice(0, 16) : "";
 
   updateModalMerchantColor();
@@ -454,6 +611,7 @@ document.getElementById("confirm-case-btn").addEventListener("click", async () =
   const description = document.getElementById("modal-description").value.trim();
   const action = document.getElementById("modal-action").value.trim();
   const charge = document.getElementById("modal-charge").value;
+  const status = document.getElementById("modal-status").value;
   const datetime = document.getElementById("modal-datetime").value;
 
   if (!merchantId) { alert("Select a merchant."); return; }
@@ -467,6 +625,7 @@ document.getElementById("confirm-case-btn").addEventListener("click", async () =
         description,
         action,
         charge,
+        status,
         datetime: datetime || new Date().toISOString()
       });
       showToast("Case updated");
@@ -478,8 +637,8 @@ document.getElementById("confirm-case-btn").addEventListener("click", async () =
         description,
         action,
         charge,
+        status,
         datetime: datetime || new Date().toISOString(),
-        status: "open",
         createdBy: localStorage.getItem("roots-user") || "unknown",
         createdAt: new Date().toISOString()
       });

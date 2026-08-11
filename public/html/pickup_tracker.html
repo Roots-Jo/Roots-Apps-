@@ -3,46 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Collection Tracker | Roots AI</title>
+  <title data-i18n="coll_title">Collection Tracker | Roots AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
   <link rel="stylesheet" href="/css/pickup_tracker.css">
   <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-</head>
+<script src="/js/arabic.js?v=2"></script>
+  </head>
 <body>
 
   <div id="navbar"></div>
 
   <!-- App Shell -->
   <div id="app-shell" class="shell">
-    <header>
-      <div class="logo-wrap">
-        <div class="logo-icon">
-          <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M1 3h15v13H1zM16 8h4l3 4v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-        </div>
-        <div class="logo-text">
-          <h1>Collection Tracker</h1>
-          <p>Shared · Team Workspace</p>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button id="refresh-btn" class="btn-transparent" title="Refresh data" style="padding: 8px;">
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+
+    <nav class="tabs" style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex;">
+        <button class="tab-btn active" data-tab="dashboard" data-i18n="coll_tab_dash">Dashboard</button>
+        <button class="tab-btn" data-tab="setup" data-i18n="coll_tab_setup">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Setup
         </button>
-        <button id="open-log-btn" class="btn-accent" style="padding: 9px 16px;">
+      </div>
+      <div class="header-actions" style="display: flex; gap: 10px; margin-right: 12px;">
+        <button id="open-log-btn" class="btn-accent" style="padding: 9px 16px;" data-i18n="coll_log_btn">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
           Log Pickup
         </button>
       </div>
-    </header>
-
-    <nav class="app-nav">
-      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
-      <button class="tab-btn" data-tab="setup">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        Setup
-      </button>
     </nav>
 
     <main>
@@ -50,26 +39,26 @@
       <section id="view-dashboard" class="view-section active">
         <div class="stats-grid" id="dashboard-stats"></div>
         <div id="dashboard-empty" class="empty-msg" style="display: none;">
-          <div style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">No pickups yet</div>
-          <div style="font-size: 13px;">Add drivers & locations in <b>Setup</b>, then hit <b>Log Pickup</b>.</div>
+          <div style="font-size: 16px; font-weight: 700; margin-bottom: 6px;" data-i18n="coll_empty_title">No pickups yet</div>
+          <div style="font-size: 13px;" data-i18n="coll_empty_sub">Add drivers & locations in <b>Setup</b>, then hit <b>Log Pickup</b>.</div>
         </div>
         <div class="charts-grid" id="dashboard-charts"></div>
         
         <!-- Filters -->
         <div class="filters-bar" style="margin-top: 24px;">
           <select id="filter-type" class="filter-select">
-            <option value="all">All Types</option>
-            <option value="Pickup">Pickup</option>
-            <option value="Delivery">Delivery</option>
+            <option value="all" data-i18n="coll_filter_types">All Types</option>
+            <option value="Pickup" data-i18n="coll_type_pickup">Pickup</option>
+            <option value="Delivery" data-i18n="coll_type_delivery">Delivery</option>
           </select>
           <select id="filter-driver" class="filter-select">
-            <option value="all">All Drivers</option>
+            <option value="all" data-i18n="coll_filter_drivers">All Drivers</option>
           </select>
           <select id="filter-location" class="filter-select">
-            <option value="all">All Locations</option>
+            <option value="all" data-i18n="coll_filter_locations">All Locations</option>
           </select>
           <select id="filter-month" class="filter-select">
-            <option value="all">All Months</option>
+            <option value="all" data-i18n="coll_filter_months">All Months</option>
           </select>
           <input type="date" id="filter-date" class="filter-select" title="Specific Date">
           <select id="group-by" class="filter-select" style="display: none;">
@@ -77,29 +66,29 @@
           </select>
           <div class="filter-stats" id="history-stats">0 pickups · JOD 0.00</div>
           <div style="display: flex; gap: 10px; margin-left: auto;">
-            <button id="export-csv-btn" class="btn-transparent" style="background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 7px 14px;">
+            <button id="export-csv-btn" class="btn-transparent" style="background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 7px 14px;" data-i18n="btn_csv">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
               CSV
             </button>
-            <button id="delete-selected-btn" class="btn-danger" style="display: none;">Delete Selected</button>
+            <button id="delete-selected-btn" class="btn-danger" style="display: none;" data-i18n="btn_delete_selected">Delete Selected</button>
           </div>
         </div>
 
-        <div id="history-empty" class="empty-msg" style="display: none;">No records match your filters.</div>
+        <div id="history-empty" class="empty-msg" style="display: none;" data-i18n="coll_no_records">No records match your filters.</div>
         
         <div class="pickup-table-wrap" id="pickup-table-wrap">
           <table class="pickup-table">
             <thead>
               <tr>
                 <th style="width: 40px;"><input type="checkbox" id="select-all-pickups"></th>
-                <th>Date / Time</th>
-                <th>Type</th>
-                <th>Driver</th>
-                <th>Location</th>
-                <th>Details</th>
-                <th>Status</th>
-                <th>Cost</th>
-                <th>Actions</th>
+                <th data-i18n="th_datetime">Date / Time</th>
+                <th data-i18n="th_type">Type</th>
+                <th data-i18n="th_driver">Driver</th>
+                <th data-i18n="th_location">Location</th>
+                <th data-i18n="th_details">Details</th>
+                <th data-i18n="th_status">Status</th>
+                <th data-i18n="th_cost">Cost</th>
+                <th data-i18n="th_actions">Actions</th>
               </tr>
             </thead>
             <tbody id="history-list"></tbody>
@@ -112,11 +101,11 @@
       <section id="view-setup" class="view-section">
         <!-- Drivers Section -->
         <div class="setup-section">
-          <div class="setup-title">Drivers</div>
-          <div class="setup-sub">People who perform pickups</div>
+          <div class="setup-title" data-i18n="coll_setup_drivers">Drivers</div>
+          <div class="setup-sub" data-i18n="coll_setup_drivers_sub">People who perform pickups</div>
           <div style="display: flex; gap: 8px; margin-bottom: 14px;">
-            <input id="new-driver-name" placeholder="Driver name">
-            <button id="add-driver-btn" class="btn-accent" style="padding: 8px 16px; white-space: nowrap;">
+            <input id="new-driver-name" data-i18n-placeholder="coll_driver_name_ph" placeholder="Driver name">
+            <button id="add-driver-btn" class="btn-accent" style="padding: 8px 16px; white-space: nowrap;" data-i18n="btn_add">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
               Add
             </button>
@@ -126,12 +115,12 @@
 
         <!-- Locations Section -->
         <div class="setup-section">
-          <div class="setup-title">Pickup Locations & Fixed Rates</div>
-          <div class="setup-sub">Each location has a fixed trip cost in JOD</div>
+          <div class="setup-title" data-i18n="coll_setup_loc">Pickup Locations & Fixed Rates</div>
+          <div class="setup-sub" data-i18n="coll_setup_loc_sub">Each location has a fixed trip cost in JOD</div>
           <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
-            <input id="new-location-name" placeholder="Location name" style="flex: 2; min-width: 140px;">
-            <input id="new-location-rate" placeholder="Rate (JOD)" type="number" style="flex: 1; min-width: 90px;">
-            <button id="add-location-btn" class="btn-accent" style="padding: 8px 16px; white-space: nowrap;">
+            <input id="new-location-name" data-i18n-placeholder="coll_loc_name_ph" placeholder="Location name" style="flex: 2; min-width: 140px;">
+            <input id="new-location-rate" data-i18n-placeholder="coll_loc_rate_ph" placeholder="Rate (JOD)" type="number" style="flex: 1; min-width: 90px;">
+            <button id="add-location-btn" class="btn-accent" style="padding: 8px 16px; white-space: nowrap;" data-i18n="btn_add">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
               Add
             </button>
@@ -141,12 +130,12 @@
 
         <!-- Danger Zone -->
         <div class="danger-zone">
-          <div class="danger-title">⚠ Danger Zone</div>
-          <button id="reset-all-btn" class="btn-red" style="padding: 10px 22px;">
+          <div class="danger-title" data-i18n="danger_zone">⚠ Danger Zone</div>
+          <button id="reset-all-btn" class="btn-red" style="padding: 10px 22px;" data-i18n="btn_reset_all">
             <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             Reset All Shared Data
           </button>
-          <div style="font-size: 11px; color: var(--dim); margin-top: 8px;">This permanently deletes all data for every team member.</div>
+          <div style="font-size: 11px; color: var(--dim); margin-top: 8px;" data-i18n="danger_sub">This permanently deletes all data for every team member.</div>
         </div>
       </section>
     </main>
@@ -155,26 +144,26 @@
     <div id="pickup-modal" class="modal-overlay" style="display: none;">
       <div class="modal-content">
         <div class="modal-header">
-          <div class="modal-title">Log Pickup</div>
+          <div class="modal-title" data-i18n="coll_modal_title">Log Pickup</div>
           <button id="close-modal-btn" class="btn-transparent" style="padding: 4px;">
             <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
         <div id="modal-setup-required" style="display: none; text-align: center;">
-          <div style="font-size: 17px; font-weight: 700; margin-bottom: 10px;">Setup Required</div>
-          <div style="font-size: 14px; color: var(--muted); margin-bottom: 24px;">Add at least one driver and one location in <b>Setup</b> first.</div>
-          <button id="modal-setup-ok" class="btn-accent" style="padding: 10px 24px;">Got it</button>
+          <div style="font-size: 17px; font-weight: 700; margin-bottom: 10px;" data-i18n="coll_setup_req">Setup Required</div>
+          <div style="font-size: 14px; color: var(--muted); margin-bottom: 24px;" data-i18n="coll_setup_req_sub">Add at least one driver and one location in <b>Setup</b> first.</div>
+          <button id="modal-setup-ok" class="btn-accent" style="padding: 10px 24px;" data-i18n="btn_got_it">Got it</button>
         </div>
 
         <div id="modal-form">
           <div class="form-field">
-            <label class="form-label">Driver</label>
+            <label class="form-label" data-i18n="th_driver">Driver</label>
             <select id="modal-driver"></select>
           </div>
 
           <div class="form-field">
-            <label class="form-label">Type</label>
+            <label class="form-label" data-i18n="th_type">Type</label>
             <select id="modal-type" onchange="
               const isDel = this.value === 'Delivery';
               document.getElementById('modal-cod-group').style.display = isDel ? 'block' : 'none';
@@ -182,58 +171,58 @@
               document.getElementById('modal-merchant-group').style.display = isDel ? 'block' : 'none';
               document.getElementById('modal-arrival-group').style.display = isDel ? 'none' : 'block';
             ">
-              <option value="Pickup">Pickup</option>
-              <option value="Delivery">Delivery</option>
+              <option value="Pickup" data-i18n="coll_type_pickup">Pickup</option>
+              <option value="Delivery" data-i18n="coll_type_delivery">Delivery</option>
             </select>
           </div>
 
           <div class="form-field" id="modal-merchant-group" style="display: none;">
-            <label class="form-label">Merchant</label>
+            <label class="form-label" data-i18n="th_merchant">Merchant</label>
             <select id="modal-pickup-merchant"></select>
           </div>
 
           <div class="form-field" id="modal-orderid-group" style="display: none;">
-            <label class="form-label">Order ID</label>
-            <input id="modal-orderid" placeholder="e.g. 123456">
+            <label class="form-label" data-i18n="th_order_id">Order ID</label>
+            <input id="modal-orderid" data-i18n-placeholder="cases_ph_order_id" placeholder="e.g. 123456">
           </div>
 
           <div class="form-field" id="modal-cod-group" style="display: none;">
-            <label class="form-label">COD Amount (JOD)</label>
+            <label class="form-label" data-i18n="coll_ph_cod">COD Amount (JOD)</label>
             <input id="modal-cod" type="number" placeholder="0.00" step="0.01">
           </div>
 
           <div class="form-field">
-            <label class="form-label">Location</label>
+            <label class="form-label" data-i18n="th_location">Location</label>
             <select id="modal-location"></select>
           </div>
 
           <div class="form-field">
-            <label class="form-label">Items (optional)</label>
-            <input id="modal-items" placeholder="e.g. 3 pallets, 12 boxes">
+            <label class="form-label" data-i18n="coll_ph_items">Items (optional)</label>
+            <input id="modal-items" data-i18n-placeholder="coll_ph_items" placeholder="e.g. 3 pallets, 12 boxes">
           </div>
 
           <div class="form-field">
-            <label class="form-label">Notes (optional)</label>
-            <input id="modal-notes" placeholder="Any extra info">
+            <label class="form-label" data-i18n="coll_ph_notes">Notes (optional)</label>
+            <input id="modal-notes" data-i18n-placeholder="coll_ph_notes" placeholder="Any extra info">
           </div>
 
           <div class="form-field">
-            <label class="form-label">Pickup Date</label>
+            <label class="form-label" data-i18n="coll_date">Pickup Date</label>
             <input id="modal-date" type="date" style="font-family: var(--font);">
           </div>
 
           <div class="form-field" id="modal-arrival-group">
-            <label class="form-label">Arrival at Roots Warehouse</label>
+            <label class="form-label" data-i18n="coll_arrival">Arrival at Roots Warehouse</label>
             <input id="modal-arrival" type="time" style="font-family: var(--mono);">
-            <div style="font-size: 11px; color: var(--dim); margin-top: 4px;">Time the driver arrived at Roots warehouse with the pickup</div>
+            <div style="font-size: 11px; color: var(--dim); margin-top: 4px;" data-i18n="coll_arrival_sub">Time the driver arrived at Roots warehouse with the pickup</div>
           </div>
 
           <div class="trip-cost-box">
-            <span style="font-size: 13px; font-weight: 700; color: var(--muted);">Trip Cost</span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--muted);" data-i18n="coll_trip_cost">Trip Cost</span>
             <span id="modal-cost-display" class="cost-val">JOD 0.00</span>
           </div>
 
-          <button id="confirm-pickup-btn" class="btn-accent" style="padding: 14px 0; width: 100%; justify-content: center; font-size: 15px; border-radius: 10px;">
+          <button id="confirm-pickup-btn" class="btn-accent" style="padding: 14px 0; width: 100%; justify-content: center; font-size: 15px; border-radius: 10px;" data-i18n="coll_confirm_btn">
             Confirm Pickup
           </button>
         </div>

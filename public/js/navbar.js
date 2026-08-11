@@ -22,7 +22,8 @@
         'pickup_tracker': true,
         'cases_tracker': true,
         'kpi_dashboard': true,
-        'shift_tracker': true
+        'shift_tracker': true,
+        'orders': true
       };
     } else {
       try {
@@ -47,26 +48,31 @@
 
     const firstLetter = username.charAt(0).toUpperCase();
 
+    const t = (key, fallback) => window.i18n ? window.i18n.t(key) : fallback;
+
     let centerLinks = ``;
     
     if (userApps['roots_cod_dashboard']) {
-      centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}">COD Reconciliation</a>`;
+      centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}" data-i18n="nav_cod">${t('nav_cod', 'COD Reconciliation')}</a>`;
     }
     if (userApps['pickup_tracker']) {
-      centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}">Collection Tracker</a>`;
+      centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}" data-i18n="nav_collection">${t('nav_collection', 'Collection Tracker')}</a>`;
     }
     if (userApps['cases_tracker']) {
-      centerLinks += `<a href="/cases_tracker" class="${isActive('cases_tracker')}">Cases Tracker</a>`;
+      centerLinks += `<a href="/cases_tracker" class="${isActive('cases_tracker')}" data-i18n="nav_cases">${t('nav_cases', 'Cases Tracker')}</a>`;
     }
     if (userApps['kpi_dashboard']) {
-      centerLinks += `<a href="https://rootsdashboardjun2026.netlify.app/" target="_blank">KPI Tracking</a>`;
+      centerLinks += `<a href="https://rootsdashboardjun2026.netlify.app/" target="_blank" data-i18n="nav_kpi">${t('nav_kpi', 'KPI Tracking')}</a>`;
     }
     if (userApps['shift_tracker']) {
-      centerLinks += `<a href="/shift_tracker" class="${isActive('shift_tracker')}">Shift Tracker</a>`;
+      centerLinks += `<a href="/shift_tracker" class="${isActive('shift_tracker')}" data-i18n="nav_shift">${t('nav_shift', 'Shift Tracker')}</a>`;
+    }
+    if (userApps['orders']) {
+      centerLinks += `<a href="https://roots-weekly.web.app/" target="_blank" data-i18n="nav_orders">${t('nav_orders', 'Orders')}</a>`;
     }
 
     if (username === "Roots" || localStorage.getItem("roots-isAdmin") === "true") {
-      centerLinks += `<a href="/admin" class="${isActive('admin')}">Admin Portal</a>`;
+      centerLinks += `<a href="/admin" class="${isActive('admin')}" data-i18n="nav_admin">${t('nav_admin', 'Admin Portal')}</a>`;
     }
 
     const navHtml = `
@@ -75,7 +81,7 @@
           <button id="mobile-hamburger" class="hamburger-btn">
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           </button>
-          <a href="/" class="brand-link ${isActive('index')}">Roots AI apps</a>
+          <a href="/" class="brand-link ${isActive('index')}" data-i18n="brand_title">${t('brand_title', 'Roots AI apps')}</a>
         </div>
         <div class="g-nav-center" id="nav-menu">
           ${centerLinks}
@@ -87,13 +93,15 @@
           </button>
           
           <div class="user-controls" style="display: flex; align-items: center; gap: 10px;">
-            <a href="/account_settings" title="Update Password" style="color: currentColor; display: flex; align-items: center; justify-content: center; opacity: 0.8; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
-              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <button id="lang-toggle-btn" style="background: var(--orange, #F37828); color: white; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center;">
+              ${window.i18n && window.i18n.getLang() === 'ar' ? 'E' : 'ع'}
+            </button>
+            <a href="/account_settings" data-i18n-title="update_password" title="${t('update_password', 'Update Password')}" style="text-decoration: none; color: inherit;">
+              <div class="user-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 1px solid rgba(255, 255, 255, 0.2);" title="Logged in as ${username}">
+                ${firstLetter}
+              </div>
             </a>
-            <div class="user-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; border: 1px solid rgba(255, 255, 255, 0.2);" title="Logged in as ${username}">
-              ${firstLetter}
-            </div>
-            <button id="nav-logout-btn" style="background: #F37828; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 14px;">Log Out</button>
+            <button id="nav-logout-btn" data-i18n="nav_logout" style="background: #F37828; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 14px;">${t('nav_logout', 'Log Out')}</button>
           </div>
         </div>
       </nav>
@@ -111,6 +119,18 @@
         
         document.getElementById("theme-icon-sun").style.display = nextTheme === "dark" ? "block" : "none";
         document.getElementById("theme-icon-moon").style.display = nextTheme === "dark" ? "none" : "block";
+      });
+    }
+
+    const langBtn = document.getElementById("lang-toggle-btn");
+    if (langBtn) {
+      langBtn.addEventListener("click", () => {
+        if (window.i18n) {
+          const current = window.i18n.getLang();
+          const next = current === 'ar' ? 'en' : 'ar';
+          window.i18n.setLang(next);
+          window.location.reload();
+        }
       });
     }
 

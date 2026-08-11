@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Portal - Roots AI Apps</title>
+  <title data-i18n="admin_title">Admin Portal - Roots AI Apps</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
   <link rel="stylesheet" href="/css/index.css?v=2.0.1">
   <link rel="stylesheet" href="/css/admin.css?v=2.0.7">
   <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-</head>
+<script src="/js/arabic.js?v=2"></script>
+  </head>
 <body>
 
   <div id="navbar"></div>
@@ -18,27 +19,10 @@
 
   <!-- Admin Dashboard -->
   <div id="admin-dashboard">
-    <div class="admin-header">
-      <h1>User Permissions & Security</h1>
-    </div>
-
-    <div class="admin-content">
-      <div class="add-user-card">
-        <h3>Add New User</h3>
-        <div class="add-user-form" style="flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
-          <input type="text" id="new-username" placeholder="Enter username (e.g., Ahmad)" autocomplete="off" style="flex: 1; min-width: 200px;">
-          <div style="flex: 1; min-width: 200px; position: relative;">
-            <input type="password" id="new-password" placeholder="Set password" autocomplete="off" style="margin-bottom: 0; padding-right: 40px;">
-            <button id="toggle-new-password" type="button" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: auto; margin-bottom: 0; background: transparent; border: none; padding: 4px 8px; color: var(--dim); display: flex; align-items: center; justify-content: center; cursor: pointer;">
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            </button>
-          </div>
-          <button id="add-user-btn" class="btn-primary" style="width: auto;">Add User</button>
-        </div>
       </div>
 
       <div class="users-list-card">
-        <h3>Manage Access</h3>
+        <h3 data-i18n="admin_manage_access">Manage Access</h3>
         <div id="users-container" class="users-grid">
           <!-- Users will be loaded here dynamically -->
         </div>
@@ -49,3 +33,5 @@
   <script type="module" src="/js/admin.js?v=1.0.5"></script>
 </body>
 </html>
+
+

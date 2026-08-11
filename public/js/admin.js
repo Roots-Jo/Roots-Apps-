@@ -18,13 +18,15 @@ const usersRef = ref(db, "users");
 
 let usersData = {};
 
+const t = (key, fb) => window.i18n && window.i18n.t(key) !== key ? window.i18n.t(key) : fb;
+
 // ── Render Users ──
 function renderUsers() {
   const container = document.getElementById("users-container");
   if (!container) return;
 
   if (Object.keys(usersData).length === 0) {
-    container.innerHTML = '<div style="color: var(--dim)">No users found. Add one above.</div>';
+    container.innerHTML = `<div style="color: var(--dim)">${t("admin_no_users", "No users found. Add one above.")}</div>`;
     return;
   }
 
@@ -33,25 +35,25 @@ function renderUsers() {
     return `
       <div class="user-item" ${data.isAdmin ? 'style="border-color: var(--accent);"' : ''}>
         <div class="user-header">
-          <strong>${username} ${data.isAdmin ? '<span style="color:var(--accent); font-size:11px;">(Admin)</span>' : ''}</strong>
+          <strong>${username} ${data.isAdmin ? `<span style="color:var(--accent); font-size:11px;">(${t("admin_role_admin", "Admin")})</span>` : ''}</strong>
           <button onclick="deleteUser('${username}')">
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
           </button>
         </div>
 
         <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
-          <div style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px;">Password</div>
+          <div style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px;">${t("admin_lbl_password", "Password")}</div>
           <div style="display: flex; gap: 8px;">
             <input type="password" id="pass-${username}" value="${data.password || ''}" style="flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 13px; background: var(--bg);">
             <button class="btn-outline" style="padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--muted);" onclick="toggleViewPassword('pass-${username}')" title="Toggle Visibility">
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             </button>
-            <button class="btn-primary" style="padding: 6px 12px; margin: 0; width: auto; font-size: 12px; border-radius: 6px;" onclick="updatePassword('${username}')">Save</button>
+            <button class="btn-primary" style="padding: 6px 12px; margin: 0; width: auto; font-size: 12px; border-radius: 6px;" onclick="updatePassword('${username}')">${t("admin_btn_save", "Save")}</button>
           </div>
         </div>
         
         <div class="perm-row" style="border-bottom: 1px solid var(--border-light); margin-bottom: 8px; padding-bottom: 12px;">
-          <span style="font-weight: 600;">Admin Privileges</span>
+          <span style="font-weight: 600;">${t("admin_privileges", "Admin Privileges")}</span>
           <label class="switch">
             <input type="checkbox" ${data.isAdmin ? 'checked' : ''} onchange="toggleAdmin('${username}', this.checked)">
             <span class="slider"></span>
@@ -59,7 +61,7 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>COD Reconciliation</span>
+          <span>${t("app_cod", "COD Reconciliation")}</span>
           <label class="switch">
             <input type="checkbox" ${apps['roots_cod_dashboard'] ? 'checked' : ''} onchange="togglePerm('${username}', 'roots_cod_dashboard', this.checked)">
             <span class="slider"></span>
@@ -67,7 +69,7 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>Collection Tracker</span>
+          <span>${t("app_pickup", "Collection Tracker")}</span>
           <label class="switch">
             <input type="checkbox" ${apps['pickup_tracker'] ? 'checked' : ''} onchange="togglePerm('${username}', 'pickup_tracker', this.checked)">
             <span class="slider"></span>
@@ -75,7 +77,7 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>KPI Dashboard</span>
+          <span>${t("app_kpi", "KPI Dashboard")}</span>
           <label class="switch">
             <input type="checkbox" ${apps['kpi_dashboard'] ? 'checked' : ''} onchange="togglePerm('${username}', 'kpi_dashboard', this.checked)">
             <span class="slider"></span>
@@ -83,7 +85,7 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>Cases Tracker</span>
+          <span>${t("app_cases", "Cases Tracker")}</span>
           <label class="switch">
             <input type="checkbox" ${apps['cases_tracker'] ? 'checked' : ''} onchange="togglePerm('${username}', 'cases_tracker', this.checked)">
             <span class="slider"></span>
@@ -91,9 +93,17 @@ function renderUsers() {
         </div>
 
         <div class="perm-row">
-          <span>Shift Tracker</span>
+          <span>${t("app_shift", "Shift Tracker")}</span>
           <label class="switch">
             <input type="checkbox" ${apps['shift_tracker'] ? 'checked' : ''} onchange="togglePerm('${username}', 'shift_tracker', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="perm-row">
+          <span>${t("app_orders", "Orders")}</span>
+          <label class="switch">
+            <input type="checkbox" ${apps['orders'] ? 'checked' : ''} onchange="togglePerm('${username}', 'orders', this.checked)">
             <span class="slider"></span>
           </label>
         </div>
@@ -128,7 +138,7 @@ window.toggleAdmin = async (username, val) => {
 };
 
 window.deleteUser = async (username) => {
-  if (confirm(`Are you sure you want to delete user "${username}"?`)) {
+  if (confirm(`${t("admin_conf_del", "Are you sure you want to delete user ")}"${username}"?`)) {
     try {
       await remove(ref(db, `users/${username}`));
     } catch (e) {
@@ -149,16 +159,16 @@ window.updatePassword = async (username) => {
   if (!inp) return;
   const newPass = inp.value;
   if (!newPass) {
-    alert("Password cannot be empty.");
+    alert(t("admin_err_pass_empty", "Password cannot be empty."));
     return;
   }
   
   try {
     await update(ref(db, `users/${username}`), { password: newPass });
-    alert("Password updated successfully!");
+    alert(t("admin_ok_pass", "Password updated successfully!"));
   } catch (e) {
     console.error("Failed to update password", e);
-    alert("Error updating password.");
+    alert(t("admin_err_pass_upd", "Error updating password."));
   }
 };
 
@@ -182,13 +192,13 @@ if (addBtn) {
     const password = passInp.value;
     
     if (!username || !password) {
-      alert("Both username and password are required.");
+      alert(t("admin_err_both_req", "Both username and password are required."));
       return;
     }
     
     const userExists = Object.keys(usersData).some(k => k.toLowerCase() === username.toLowerCase());
     if (userExists) {
-      alert("User already exists!");
+      alert(t("admin_err_exists", "User already exists!"));
       return;
     }
     
@@ -201,7 +211,8 @@ if (addBtn) {
           'pickup_tracker': false,
           'kpi_dashboard': false,
           'cases_tracker': false,
-          'shift_tracker': false
+          'shift_tracker': false,
+          'orders': false
         }
       });
       userInp.value = "";

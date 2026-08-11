@@ -26,6 +26,8 @@ let activeShiftData = null;
 let timerInterval = null;
 let historicalShifts = [];
 
+const t = (key, fb) => window.i18n && window.i18n.t(key) !== key ? window.i18n.t(key) : fb;
+
 const JOD_PER_HOUR = 2.0;
 
 // ── DOM Elements ──
@@ -132,20 +134,20 @@ function stopLocalTimer() {
 }
 
 function setPunchedInState() {
-  punchStatusEl.textContent = "Currently Punched In";
+  punchStatusEl.textContent = t("shift_status_in", "Currently Punched In");
   punchStatusEl.classList.add("active");
   punchBtn.classList.remove("btn-green");
   punchBtn.classList.add("btn-red");
-  punchBtnText.textContent = "PUNCH OUT";
+  punchBtnText.textContent = t("shift_btn_out", "PUNCH OUT");
   startLocalTimer();
 }
 
 function setPunchedOutState() {
-  punchStatusEl.textContent = "Currently Punched Out";
+  punchStatusEl.textContent = t("shift_status_out", "Currently Punched Out");
   punchStatusEl.classList.remove("active");
   punchBtn.classList.remove("btn-red");
   punchBtn.classList.add("btn-green");
-  punchBtnText.textContent = "PUNCH IN";
+  punchBtnText.textContent = t("shift_btn_in", "PUNCH IN");
   stopLocalTimer();
 }
 
@@ -282,7 +284,7 @@ punchBtn.addEventListener("click", () => {
   isPunchingOutGlobal = !!activeShiftData;
   expectedTextGlobal = isPunchingOutGlobal ? "punch out" : "punch in";
   
-  qrModalTitle.textContent = isPunchingOutGlobal ? "Scan QR to Punch Out" : "Scan QR to Punch In";
+  qrModalTitle.textContent = isPunchingOutGlobal ? t("shift_qr_title_out", "Scan QR to Punch Out") : t("shift_qr_title_in", "Scan QR to Punch In");
   qrModal.style.display = "flex";
   
   currentFacingMode = "environment";
@@ -307,7 +309,7 @@ if (isAdmin) {
   function renderActiveShifts() {
     const keys = Object.keys(allActiveShifts);
     if (keys.length === 0) {
-      activeShiftsContainer.innerHTML = '<div class="empty-msg">No active shifts.</div>';
+      activeShiftsContainer.innerHTML = `<div class="empty-msg">${t("shift_no_active", "No active shifts.")}</div>`;
       return;
     }
     
@@ -319,7 +321,7 @@ if (isAdmin) {
           <div class="active-shift-user">${user}</div>
           <div class="active-shift-timer">${formatTime(diff)}</div>
           <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Since ${new Date(shift.startTime).toLocaleTimeString()}</div>
-          <button class="btn-action admin-stop-shift" data-user="${user}" style="margin-top: 12px; background: rgba(235, 87, 87, 0.1); color: var(--red); width: 100%; font-size: 12px; font-weight: 700;">STOP SHIFT</button>
+          <button class="btn-action admin-stop-shift" data-user="${user}" style="margin-top: 12px; background: rgba(235, 87, 87, 0.1); color: var(--red); width: 100%; font-size: 12px; font-weight: 700;">${t("shift_btn_out", "STOP SHIFT")}</button>
         </div>
       `;
     }).join("");
@@ -383,7 +385,7 @@ if (isAdmin) {
     });
     
     const currUserVal = filterUser.value;
-    filterUser.innerHTML = '<option value="all">All Users</option>';
+    filterUser.innerHTML = `<option value="all">${t("shift_all_users", "All Users")}</option>`;
     Array.from(users).sort().forEach(u => {
       const opt = document.createElement("option");
       opt.value = u;
@@ -393,7 +395,7 @@ if (isAdmin) {
     if (users.has(currUserVal)) filterUser.value = currUserVal;
     
     const currWeekVal = filterWeek.value;
-    filterWeek.innerHTML = '<option value="all">All Weeks</option>';
+    filterWeek.innerHTML = `<option value="all">${t("shift_all_weeks", "All Weeks")}</option>`;
     Array.from(weeks).sort().reverse().forEach(w => {
       const opt = document.createElement("option");
       opt.value = w;
@@ -416,7 +418,7 @@ if (isAdmin) {
     let totalPay = 0;
     
     if (filtered.length === 0) {
-      historyTbody.innerHTML = `<tr><td colspan="9" class="empty-msg">No shifts found.</td></tr>`;
+      historyTbody.innerHTML = `<tr><td colspan="9" class="empty-msg">${t("shift_no_history", "No shifts found.")}</td></tr>`;
       totalPayEl.textContent = `0.00 JOD`;
       if (selectAllBtn) {
         selectAllBtn.checked = false;
