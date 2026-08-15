@@ -405,7 +405,7 @@ window.ARABIC_TRANSLATIONS = {
     // Navbar
     "brand_title": "Roots AI apps",
     "nav_cod": "COD Reconciliation",
-    "nav_pickup": "Pickup Tracker",
+    "nav_pickup": "Pick Up Tracker",
     "nav_coll_tracker": "Collection Tracker",
     "nav_cases": "Cases Tracker",
     "nav_kpi": "KPI Tracking",
@@ -429,7 +429,7 @@ window.ARABIC_TRANSLATIONS = {
     
     // App Titles
     "app_cod": "COD Reconciliation",
-    "app_pickup": "Pickup Tracker",
+    "app_pickup": "Pick Up Tracker",
     "app_coll_tracker": "Collection Tracker",
     "app_cases": "Cases Tracker",
     "app_kpi": "KPI Dashboard",
@@ -705,7 +705,7 @@ window.ARABIC_TRANSLATIONS = {
     "admin_btn_save": "Save",
     "admin_privileges": "Admin Privileges",
     "app_cod": "COD Reconciliation",
-    "app_pickup": "Collection Tracker",
+    "app_pickup": "Pick Up Tracker",
     "app_kpi": "KPI Dashboard",
     "app_cases": "Cases Tracker",
     "app_shift": "Shift Tracker",

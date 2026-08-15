@@ -10,22 +10,37 @@
   <link rel="stylesheet" href="/css/admin.css?v=2.0.7">
   <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-<script src="/js/arabic.js?v=2"></script>
-  </head>
+  <script src="/js/arabic.js?v=2"></script>
+</head>
 <body>
 
   <div id="navbar"></div>
   <script src="/js/navbar.js?v=1.0.7"></script>
 
   <!-- Admin Dashboard -->
-  <div id="admin-dashboard">
-      </div>
-
-      <div class="users-list-card">
-        <h3 data-i18n="admin_manage_access">Manage Access</h3>
-        <div id="users-container" class="users-grid">
-          <!-- Users will be loaded here dynamically -->
+  <div id="admin-dashboard" class="admin-content">
+    
+    <div class="add-user-card">
+      <h3 data-i18n="admin_add_user">Add User</h3>
+      <div class="add-user-form" style="flex-wrap: wrap; gap: 12px;">
+        <input type="text" id="new-username" placeholder="Username" data-i18n-placeholder="admin_ph_user">
+        <div style="display: flex; flex: 1; position: relative; gap: 8px; min-width: 250px;">
+          <input type="password" id="new-password" placeholder="Password" data-i18n-placeholder="admin_ph_pass" style="margin-bottom: 0; width: 100%;">
+          <button id="toggle-new-password" class="btn-outline" style="padding: 0 12px; margin-bottom: 0;" title="Toggle Visibility">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </button>
         </div>
+        <button id="add-user-btn" class="btn-primary" data-i18n="admin_btn_add">Add User</button>
+      </div>
+    </div>
+
+    <div class="users-list-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <h3 data-i18n="admin_manage_access" style="margin: 0;">Manage Access</h3>
+        <input type="text" id="user-search" placeholder="Search users..." style="padding: 10px; border: 1px solid var(--border); border-radius: 8px; width: 300px; max-width: 100%; background: #ebf0f2; color: var(--text); font-family: inherit;">
+      </div>
+      <div id="users-container" class="users-grid">
+        <!-- Users will be loaded here dynamically -->
       </div>
     </div>
   </div>
@@ -33,5 +48,3 @@
   <script type="module" src="/js/admin.js?v=1.0.5"></script>
 </body>
 </html>
-
-

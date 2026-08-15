@@ -57,7 +57,7 @@
       centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}" data-i18n="nav_cod">${t('nav_cod', 'COD Reconciliation')}</a>`;
     }
     if (userApps['pickup_tracker']) {
-      centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}" data-i18n="nav_pickup">${t('nav_pickup', 'Pickup Tracker')}</a>`;
+      centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}" data-i18n="nav_pickup">${t('nav_pickup', 'Pick Up Tracker')}</a>`;
     }
     if (userApps['cases_tracker']) {
       centerLinks += `<a href="/cases_tracker" class="${isActive('cases_tracker')}" data-i18n="nav_cases">${t('nav_cases', 'Cases Tracker')}</a>`;

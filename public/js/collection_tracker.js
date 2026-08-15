@@ -141,7 +141,7 @@ onValue(ref(db, 'collection_tracker/locations'), (snapshot) => {
     const loc = availableLocations[key];
     const opt = document.createElement("option");
     opt.value = key; // Use the node key as the value
-    opt.textContent = `${loc.name} - ${loc.rate} JOD`;
+    opt.textContent = isAdmin ? `${loc.name} - ${loc.rate} JOD` : loc.name;
     opt.setAttribute("data-name", loc.name);
     opt.setAttribute("data-rate", loc.rate);
     tripLocationSelect.appendChild(opt);

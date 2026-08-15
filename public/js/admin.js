@@ -25,12 +25,20 @@ function renderUsers() {
   const container = document.getElementById("users-container");
   if (!container) return;
 
+  const searchInp = document.getElementById("user-search");
+  const searchTerm = searchInp ? searchInp.value.toLowerCase() : "";
+
   if (Object.keys(usersData).length === 0) {
     container.innerHTML = `<div style="color: var(--dim)">${t("admin_no_users", "No users found. Add one above.")}</div>`;
     return;
   }
 
-  container.innerHTML = Object.entries(usersData).map(([username, data]) => {
+  let visibleCount = 0;
+  const html = Object.entries(usersData).map(([username, data]) => {
+    if (searchTerm && !username.toLowerCase().includes(searchTerm)) {
+      return '';
+    }
+    visibleCount++;
     const apps = data.apps || {};
     return `
       <div class="user-item" ${data.isAdmin ? 'style="border-color: var(--accent);"' : ''}>
@@ -69,7 +77,7 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>${t("app_pickup", "Pickup Tracker")}</span>
+          <span>${t("app_pickup", "Pick Up Tracker")}</span>
           <label class="switch">
             <input type="checkbox" ${apps['pickup_tracker'] ? 'checked' : ''} onchange="togglePerm('${username}', 'pickup_tracker', this.checked)">
             <span class="slider"></span>
@@ -118,6 +126,17 @@ function renderUsers() {
       </div>
     `;
   }).join("");
+
+  if (visibleCount === 0 && Object.keys(usersData).length > 0) {
+    container.innerHTML = `<div style="color: var(--dim)">No matching users found.</div>`;
+  } else {
+    container.innerHTML = html;
+  }
+}
+
+const searchInputEl = document.getElementById("user-search");
+if (searchInputEl) {
+  searchInputEl.addEventListener("input", renderUsers);
 }
 
 // ── Load Users (real-time listener) ──
