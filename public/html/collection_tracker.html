@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="coll_tracker_title">Collection Tracker | Roots AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
+  <link rel="stylesheet" href="/css/collection_tracker.css?v=1.0.0">
+  <script type="module" src="/js/auth.js"></script>
+  <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
+  <script src="/js/arabic.js?v=2"></script>
+</head>
+<body>
+
+  <div id="navbar"></div>
+  <script src="/js/navbar.js?v=1.0.7"></script>
+
+  <div id="app-shell" class="shell">
+
+    <nav class="tabs" id="admin-tabs" style="display: none;">
+      <button class="tab-btn active" data-tab="punch">
+        <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span data-i18n="coll_tab_my">My Trip</span>
+      </button>
+      <button class="tab-btn" data-tab="admin">
+        <svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <span data-i18n="coll_tab_admin">Admin Dashboard</span>
+      </button>
+    </nav>
+
+    <main>
+      <!-- My Trip View -->
+      <section id="view-punch" class="view-section active">
+        <div class="punch-container">
+          <div class="punch-status" id="punch-status" data-i18n="coll_status_not_trip">Not on a trip</div>
+          <div class="punch-timer" id="punch-timer">00:00:00</div>
+          
+          <div id="location-select-wrap" style="margin-bottom: 20px; width: 100%; max-width: 300px;">
+            <label style="display: block; font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 6px;" data-i18n="coll_sel_dest">Select Destination Location</label>
+            <select id="trip-location-select" class="filter-select" style="width: 100%; padding: 12px; font-size: 15px; border-radius: 10px;">
+              <option value="" disabled selected data-i18n="coll_opt_choose">-- Choose Location --</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <button id="punch-btn" class="punch-btn btn-green">
+            <div class="punch-btn-inner">
+              <span id="punch-btn-text" data-i18n="coll_btn_start_trip">START TRIP</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <!-- Admin Dashboard View -->
+      <section id="view-admin" class="view-section" style="display: none;">
+        
+        <div class="admin-section" style="margin-bottom: 40px;">
+          <div class="setup-title" data-i18n="coll_setup_loc_rates">Setup Locations & Rates</div>
+          <div class="setup-sub" data-i18n="coll_setup_loc_rates_sub">Admins can define locations and fixed prices per trip.</div>
+          
+          <div style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+            <input id="new-location-name" data-i18n-placeholder="coll_ph_loc_name" placeholder="Location name" style="flex: 2; min-width: 140px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font);">
+            <input id="new-location-rate" data-i18n-placeholder="coll_ph_rate" placeholder="Rate (JOD)" type="number" step="0.01" style="flex: 1; min-width: 90px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font);">
+            <button id="add-location-btn" class="btn-green" style="padding: 10px 20px; border-radius: 8px; border: none; color: white; font-weight: 700; cursor: pointer;" data-i18n="btn_add">
+              Add
+            </button>
+          </div>
+          
+          <div class="cases-table-wrap">
+            <table class="cases-table">
+              <thead>
+                <tr>
+                  <th data-i18n="th_location">Location Name</th>
+                  <th data-i18n="coll_rate_jod">Rate (JOD)</th>
+                  <th style="width: 60px;" data-i18n="th_actions">Action</th>
+                </tr>
+              </thead>
+              <tbody id="locations-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="admin-section">
+          <div class="setup-title" data-i18n="coll_trip_history">Trip History</div>
+          <div class="setup-sub" data-i18n="coll_trip_history_sub">Completed trips with calculated payout and distance.</div>
+          
+          <div class="filters-bar" style="margin-top: 16px; justify-content: space-between;">
+            <div style="display: flex; gap: 10px;">
+              <select id="filter-user" class="filter-select">
+                <option value="all" data-i18n="shift_all_users">All Users</option>
+              </select>
+              <select id="filter-week" class="filter-select">
+                <option value="all" data-i18n="shift_all_weeks">All Weeks</option>
+              </select>
+            </div>
+            <button id="delete-selected-btn" class="btn-danger" style="display: none;" data-i18n="btn_delete_selected">Delete Selected</button>
+          </div>
+
+          <div class="cases-table-wrap">
+            <table class="cases-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;"><input type="checkbox" id="select-all-trips"></th>
+                  <th data-i18n="th_user">User</th>
+                  <th data-i18n="th_date">Date</th>
+                  <th data-i18n="th_day">Day</th>
+                  <th data-i18n="th_start">Start Time</th>
+                  <th data-i18n="th_end">End Time</th>
+                  <th data-i18n="th_location">Location</th>
+                  <th data-i18n="coll_dist_km">Distance (km)</th>
+                  <th data-i18n="th_duration">Duration</th>
+                  <th data-i18n="th_price_jod">Price (JOD)</th>
+                  <th style="width: 40px;"></th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody"></tbody>
+              <tfoot id="history-tfoot">
+                <tr>
+                  <td colspan="9" style="text-align: right; font-weight: 700;" data-i18n="shift_total">Total:</td>
+                  <td colspan="2" id="history-total-pay" style="font-weight: 800; color: var(--accent);">0.00 JOD</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/js/collection_tracker.js?v=1.0.0"></script>
+</body>
+</html>

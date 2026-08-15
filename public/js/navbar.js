@@ -23,6 +23,7 @@
         'cases_tracker': true,
         'kpi_dashboard': true,
         'shift_tracker': true,
+        'collection_tracker': true,
         'orders': true
       };
     } else {
@@ -56,7 +57,7 @@
       centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}" data-i18n="nav_cod">${t('nav_cod', 'COD Reconciliation')}</a>`;
     }
     if (userApps['pickup_tracker']) {
-      centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}" data-i18n="nav_collection">${t('nav_collection', 'Collection Tracker')}</a>`;
+      centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}" data-i18n="nav_pickup">${t('nav_pickup', 'Pickup Tracker')}</a>`;
     }
     if (userApps['cases_tracker']) {
       centerLinks += `<a href="/cases_tracker" class="${isActive('cases_tracker')}" data-i18n="nav_cases">${t('nav_cases', 'Cases Tracker')}</a>`;
@@ -66,6 +67,9 @@
     }
     if (userApps['shift_tracker']) {
       centerLinks += `<a href="/shift_tracker" class="${isActive('shift_tracker')}" data-i18n="nav_shift">${t('nav_shift', 'Shift Tracker')}</a>`;
+    }
+    if (userApps['collection_tracker']) {
+      centerLinks += `<a href="/collection_tracker" class="${isActive('collection_tracker')}" data-i18n="nav_coll_tracker">${t('nav_coll_tracker', 'Collection Tracker')}</a>`;
     }
     if (userApps['orders']) {
       centerLinks += `<a href="https://roots-weekly.web.app/" target="_blank" data-i18n="nav_orders">${t('nav_orders', 'Orders')}</a>`;

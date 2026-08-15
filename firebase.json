@@ -61,6 +61,14 @@
         "destination": "/html/shift_tracker.html"
       },
       {
+        "source": "/collection_tracker",
+        "destination": "/html/collection_tracker.html"
+      },
+      {
+        "source": "/collection_tracker.html",
+        "destination": "/html/collection_tracker.html"
+      },
+      {
         "source": "/account_settings",
         "destination": "/html/account_settings.html"
       },

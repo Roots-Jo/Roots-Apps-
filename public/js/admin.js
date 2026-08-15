@@ -69,9 +69,17 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>${t("app_pickup", "Collection Tracker")}</span>
+          <span>${t("app_pickup", "Pickup Tracker")}</span>
           <label class="switch">
             <input type="checkbox" ${apps['pickup_tracker'] ? 'checked' : ''} onchange="togglePerm('${username}', 'pickup_tracker', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <div class="perm-row">
+          <span>${t("app_coll_tracker", "Collection Tracker")}</span>
+          <label class="switch">
+            <input type="checkbox" ${apps['collection_tracker'] ? 'checked' : ''} onchange="togglePerm('${username}', 'collection_tracker', this.checked)">
             <span class="slider"></span>
           </label>
         </div>
@@ -209,6 +217,7 @@ if (addBtn) {
         apps: {
           'roots_cod_dashboard': false,
           'pickup_tracker': false,
+          'collection_tracker': false,
           'kpi_dashboard': false,
           'cases_tracker': false,
           'shift_tracker': false,
