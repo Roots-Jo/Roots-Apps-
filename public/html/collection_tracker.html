@@ -108,8 +108,10 @@
                   <th data-i18n="th_start">Start Time</th>
                   <th data-i18n="th_end">End Time</th>
                   <th data-i18n="th_location">Location</th>
-                  <th data-i18n="coll_auto_km">Auto KM</th>
-                  <th data-i18n="coll_manual_km">Manual KM</th>
+                  <th data-i18n="coll_table_auto_km">Auto KM</th>
+                  <th data-i18n="coll_table_start_km">Start KM</th>
+                  <th data-i18n="coll_table_end_km">End KM</th>
+                  <th data-i18n="coll_table_diff_km">Diff KM</th>
                   <th data-i18n="th_duration">Duration</th>
                   <th data-i18n="th_price_jod">Price (JOD)</th>
                   <th style="width: 40px;"></th>
@@ -133,7 +135,7 @@
   <!-- Manual KM Modal -->
   <div id="km-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
-      <h3 data-i18n="coll_prompt_manual_km" style="margin-top: 0; font-size: 18px; color: var(--text);">Please enter manual KM driven:</h3>
+      <h3 id="km-modal-title" style="margin-top: 0; font-size: 18px; color: var(--text);">Please enter KM:</h3>
       <input type="number" id="manual-km-input" class="filter-select" style="width: 100%; margin-bottom: 20px; padding: 12px; border-radius: 8px; border: 1px solid var(--border);" placeholder="0.0">
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button id="km-modal-cancel" class="btn-cancel" data-i18n="btn_cancel">Cancel</button>

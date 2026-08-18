@@ -339,7 +339,20 @@ window.ARABIC_TRANSLATIONS = {
   
   // --- Auth ---
   "auth_err_admin": "ليس لديك صلاحية للوصول إلى بوابة الإدارة.",
-  "auth_err_app": "ليس لديك صلاحية للوصول إلى هذا التطبيق."
+  "auth_err_app": "ليس لديك صلاحية للوصول إلى هذا التطبيق.",
+  
+  "order_tab_fetching": "جلب الطلبات",
+  "order_tab_master": "الورقة الرئيسية",
+  "order_tab_deliveries": "التوصيلات",
+  "coll_prompt_start_km": "الرجاء إدخال كيلومترات البداية:",
+  "coll_prompt_end_km": "الرجاء إدخال كيلومترات النهاية:",
+  "coll_table_auto_km": "كيلومترات تلقائية",
+  "coll_table_start_km": "كيلومترات البداية",
+  "coll_table_end_km": "كيلومترات النهاية",
+  "coll_table_diff_km": "الفرق كيلومتر",
+  "coll_prompt_manual_km": "الرجاء إدخال الكيلومترات المقطوعة يدويًا:",
+  "coll_auto_km": "كيلومترات تلقائية",
+  "coll_manual_km": "كيلومترات يدوية"
 };
 
 (function() {
@@ -646,6 +659,12 @@ window.ARABIC_TRANSLATIONS = {
     "order_tab_fetching": "Order Fetching",
     "order_tab_master": "Master Sheet",
     "order_tab_deliveries": "Deliveries",
+    "coll_prompt_start_km": "Please enter Start KM:",
+    "coll_prompt_end_km": "Please enter End KM:",
+    "coll_table_auto_km": "Auto KM",
+    "coll_table_start_km": "Start KM",
+    "coll_table_end_km": "End KM",
+    "coll_table_diff_km": "Diff KM",
     "coll_prompt_manual_km": "Please enter manual KM driven:",
     "coll_auto_km": "Auto KM",
     "coll_manual_km": "Manual KM",

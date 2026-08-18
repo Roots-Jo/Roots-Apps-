@@ -76,6 +76,11 @@ if (isAdmin) {
 }
 
 // ── Helpers ──
+function formatKm(val) {
+  if (val === undefined || val === null || isNaN(val) || val === "") return "-";
+  return parseFloat(val).toLocaleString('en-US');
+}
+
 function formatTime(ms) {
   const totalSeconds = Math.floor(ms / 1000);
   const h = Math.floor(totalSeconds / 3600);
@@ -221,6 +226,36 @@ function setTripActiveState(data = null) {
   }
 }
 
+async function promptKm(title) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("km-modal");
+    const titleEl = document.getElementById("km-modal-title");
+    const input = document.getElementById("manual-km-input");
+    const btnCancel = document.getElementById("km-modal-cancel");
+    const btnSubmit = document.getElementById("km-modal-submit");
+    
+    titleEl.textContent = title;
+    input.value = "";
+    modal.style.display = "flex";
+    
+    const cleanup = () => {
+      btnCancel.removeEventListener("click", onCancel);
+      btnSubmit.removeEventListener("click", onSubmit);
+      modal.style.display = "none";
+    };
+    
+    const onCancel = () => { cleanup(); resolve(null); };
+    const onSubmit = () => {
+      const val = parseFloat(input.value);
+      cleanup();
+      resolve(isNaN(val) ? null : val);
+    };
+    
+    btnCancel.addEventListener("click", onCancel);
+    btnSubmit.addEventListener("click", onSubmit);
+  });
+}
+
 function setTripInactiveState() {
   punchStatusEl.textContent = t("coll_status_not_trip", "Not on a trip");
   punchStatusEl.classList.remove("active");
@@ -238,98 +273,100 @@ punchBtn.addEventListener("click", async () => {
   try {
     if (activeTripData) {
       // End Trip
-      punchStatusEl.textContent = t("coll_status_fetching", "Fetching GPS & Ending...");
-      
-      let endLat = null, endLon = null;
-      try {
-        const pos = await getGPSPosition();
-        endLat = pos.coords.latitude;
-        endLon = pos.coords.longitude;
-      } catch (err) {
-        console.error("GPS Error:", err);
-        alert(t("coll_alert_gps_err", "Failed to get GPS location. The trip will be ended without distance calculation."));
-      }
+        const endKm = await promptKm(t("coll_prompt_end_km", "Please enter End KM:"));
+        if (endKm === null) {
+          punchBtn.disabled = false;
+          punchBtn.style.opacity = "1";
+          return;
+        }
 
-      const endTime = Date.now();
-      const startTime = activeTripData.startTime;
-      const durationMs = endTime - startTime;
-      
-      const distanceKm = calculateDistance(
-        activeTripData.startLat, activeTripData.startLon,
-        endLat, endLon
-      );
-      
-      const manualKmStr = await new Promise((resolve) => {
-        const modal = document.getElementById("km-modal");
-        const input = document.getElementById("manual-km-input");
-        const btnCancel = document.getElementById("km-modal-cancel");
-        const btnSubmit = document.getElementById("km-modal-submit");
+        // Validate
+        if (activeTripData.startKm !== undefined && endKm < activeTripData.startKm) {
+          alert("End KM cannot be less than Start KM!");
+          punchBtn.disabled = false;
+          punchBtn.style.opacity = "1";
+          return;
+        }
+
+        punchStatusEl.textContent = t("coll_status_fetching", "Fetching GPS & Ending...");
         
-        input.value = "";
-        modal.style.display = "flex";
+        let endLat = null, endLon = null;
+        try {
+          const pos = await getGPSPosition();
+          endLat = pos.coords.latitude;
+          endLon = pos.coords.longitude;
+        } catch (err) {
+          console.error("GPS Error:", err);
+          alert(t("coll_alert_gps_err", "Failed to get GPS location. The trip will be ended without distance calculation."));
+        }
+
+        const endTime = Date.now();
+        const startTime = activeTripData.startTime;
+        const durationMs = endTime - startTime;
         
-        const cleanup = () => {
-          btnCancel.removeEventListener("click", onCancel);
-          btnSubmit.removeEventListener("click", onSubmit);
-          modal.style.display = "none";
+        const distanceKm = calculateDistance(
+          activeTripData.startLat, activeTripData.startLon,
+          endLat, endLon
+        );
+        
+        const diffKm = endKm - (activeTripData.startKm || 0);
+
+        const newTrip = {
+          username: currentUser,
+          date: new Date(startTime).toISOString().split('T')[0],
+          day: new Date(startTime).toLocaleDateString("en-US", { weekday: "long" }),
+          weekIdentifier: getWeekIdentifier(startTime),
+          startTime: startTime,
+          endTime: endTime,
+          durationFormatted: formatTime(durationMs),
+          startLat: activeTripData.startLat || null,
+          startLon: activeTripData.startLon || null,
+          endLat: endLat,
+          endLon: endLon,
+          distanceKm: distanceKm,
+          startKm: activeTripData.startKm || null,
+          endKm: endKm,
+          diffKm: diffKm,
+          locationName: activeTripData.locationName || "Unknown",
+          price: activeTripData.rate || "0"
         };
         
-        const onCancel = () => { cleanup(); resolve(null); };
-        const onSubmit = () => { cleanup(); resolve(input.value); };
+        const tripRef = push(ref(db, 'collection_tracker/history'));
+        await set(tripRef, newTrip);
         
-        btnCancel.addEventListener("click", onCancel);
-        btnSubmit.addEventListener("click", onSubmit);
-      });
-      
-      const manualKm = manualKmStr && manualKmStr.trim() !== "" ? parseFloat(manualKmStr) : null;
-      
-      const newTrip = {
-        username: currentUser,
-        date: new Date(startTime).toISOString().split('T')[0],
-        day: new Date(startTime).toLocaleDateString("en-US", { weekday: "long" }),
-        startTime: startTime,
-        endTime: endTime,
-        durationFormatted: formatTime(durationMs),
-        locationName: activeTripData.locationName || "Unknown",
-        locationId: activeTripData.locationId || "",
-        price: parseFloat(activeTripData.rate || 0),
-        distanceKm: distanceKm,
-        manualKm: manualKm,
-        weekIdentifier: getWeekIdentifier(new Date(startTime)),
-        startLat: activeTripData.startLat || null,
-        startLon: activeTripData.startLon || null,
-        endLat: endLat,
-        endLon: endLon
-      };
-      
-      await push(ref(db, 'collection_tracker/history'), newTrip);
-      await remove(ref(db, `collection_tracker/active/${currentUser}`));
-      
-      activeTripData = null;
-      setTripInactiveState();
+        await remove(ref(db, `collection_tracker/active/${currentUser}`));
+        
+        setTripInactiveState();
       
     } else {
       // Start Trip
-      const locId = tripLocationSelect.value;
-      if (!locId) {
-        alert(t("coll_alert_sel_loc", "Please select a location first."));
-        punchBtn.disabled = false;
-        punchBtn.style.opacity = "1";
-        return;
-      }
-      
-      const opt = tripLocationSelect.options[tripLocationSelect.selectedIndex];
-      const locName = opt.getAttribute("data-name");
-      const locRate = opt.getAttribute("data-rate");
+        const locId = tripLocationSelect.value;
+        if (!locId) {
+          alert(t("coll_alert_sel_loc", "Please select a location first."));
+          punchBtn.disabled = false;
+          punchBtn.style.opacity = "1";
+          return;
+        }
+        
+        const startKm = await promptKm(t("coll_prompt_start_km", "Please enter Start KM:"));
+        if (startKm === null) {
+          punchBtn.disabled = false;
+          punchBtn.style.opacity = "1";
+          return;
+        }
 
-      punchStatusEl.textContent = t("coll_status_fetching", "Fetching GPS to start...");
-      
-      let startLat = null, startLon = null;
-      try {
-        const pos = await getGPSPosition();
-        startLat = pos.coords.latitude;
-        startLon = pos.coords.longitude;
-      } catch (err) {
+        const opt = tripLocationSelect.options[tripLocationSelect.selectedIndex];
+        const locName = opt.getAttribute("data-name");
+        const locRate = opt.getAttribute("data-rate");
+
+        punchStatusEl.textContent = t("coll_status_fetching", "Fetching GPS to start...");
+        
+        let startLat = null, startLon = null;
+        try {
+          const pos = await getGPSPosition();
+          startLat = pos.coords.latitude;
+          startLon = pos.coords.longitude;
+        } catch (err) {
         console.error("GPS Error:", err);
         alert(t("coll_alert_gps_err", "Failed to get GPS location. Please ensure location permissions are granted."));
         punchBtn.disabled = false;
@@ -345,7 +382,8 @@ punchBtn.addEventListener("click", async () => {
         locationName: locName,
         rate: locRate,
         startLat: startLat,
-        startLon: startLon
+        startLon: startLon,
+        startKm: startKm
       });
     }
   } catch (error) {
@@ -471,8 +509,8 @@ if (isAdmin) {
       const wk = trip.weekIdentifier || "Unknown Week";
       if (!weeksMap[wk]) weeksMap[wk] = { trips: [], weekTotal: 0 };
       weeksMap[wk].trips.push(trip);
-      weeksMap[wk].weekTotal += (trip.price || 0);
-      totalPay += (trip.price || 0);
+      weeksMap[wk].weekTotal += (parseFloat(trip.price) || 0);
+      totalPay += (parseFloat(trip.price) || 0);
     });
 
     const weekKeys = Object.keys(weeksMap).sort().reverse();
@@ -483,7 +521,7 @@ if (isAdmin) {
       
       html += `
         <tr class="week-separator" style="pointer-events: none;">
-          <td colspan="12" style="background: rgba(39, 174, 96, 0.05); padding: 8px 16px; border-bottom: 2px solid var(--border); border-top: 2px solid var(--border);">
+          <td colspan="14" style="background: rgba(39, 174, 96, 0.05); padding: 8px 16px; border-bottom: 2px solid var(--border); border-top: 2px solid var(--border);">
             <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; color: var(--green); text-transform: uppercase;">
               <span>${wk}</span>
               <span>Subtotal: ${weekObj.weekTotal.toFixed(2)} JOD</span>
@@ -516,8 +554,10 @@ if (isAdmin) {
         });
         daySelectHtml += '</select>';
 
-        const distanceStr = trip.distanceKm !== undefined && trip.distanceKm !== null ? `${trip.distanceKm}` : "-";
-        const manualDistanceStr = trip.manualKm !== undefined && trip.manualKm !== null ? `${trip.manualKm}` : "-";
+        const distanceStr = trip.distanceKm !== undefined && trip.distanceKm !== null ? trip.distanceKm : "-";
+        const startKmStr = formatKm(trip.startKm);
+        const endKmStr = formatKm(trip.endKm);
+        const diffKmStr = formatKm(trip.diffKm);
         
         return `
           <tr>
@@ -529,9 +569,11 @@ if (isAdmin) {
             <td><input type="time" value="${endTime24}" class="inline-edit-time" data-id="${trip.id}" data-field="endTime" data-date="${trip.date}" style="padding:4px; border:1px solid var(--border); border-radius:4px; font-family:var(--font); font-size:13px; cursor:pointer;"></td>
             <td style="font-weight: 600;">${locSelectHtml}</td>
             <td contenteditable="true" data-field="distanceKm">${distanceStr}</td>
-            <td contenteditable="true" data-field="manualKm">${manualDistanceStr}</td>
+            <td contenteditable="true" data-field="startKm">${startKmStr}</td>
+            <td contenteditable="true" data-field="endKm">${endKmStr}</td>
+            <td contenteditable="true" data-field="diffKm">${diffKmStr}</td>
             <td contenteditable="true" data-field="durationFormatted" style="font-family: var(--mono); font-weight: 600;">${trip.durationFormatted}</td>
-            <td contenteditable="true" data-field="price" style="font-weight: 600; color: var(--accent);">${(trip.price || 0).toFixed(2)}</td>
+            <td contenteditable="true" data-field="price" style="font-weight: 600; color: var(--accent);">${(parseFloat(trip.price) || 0).toFixed(2)}</td>
             <td>
               <button class="btn-action btn-delete" data-id="${trip.id}" title="Delete Trip" style="pointer-events: auto;">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -583,14 +625,29 @@ if (isAdmin) {
         const field = e.target.getAttribute("data-field");
         let val = e.target.textContent.trim();
         
-        if (field === "price" || field === "distanceKm" || field === "manualKm") {
-          val = parseFloat(val);
+        if (field === "price" || field === "distanceKm" || field === "manualKm" || field === "startKm" || field === "endKm" || field === "diffKm") {
+          val = parseFloat(val.replace(/,/g, ''));
           if (isNaN(val)) val = null;
+        }
+
+        let updates = { [field]: val };
+        
+        if (field === "startKm" || field === "endKm") {
+          const trip = historicalTrips.find(t => t.id === id);
+          if (trip) {
+            let start = field === "startKm" ? val : trip.startKm;
+            let end = field === "endKm" ? val : trip.endKm;
+            start = typeof start === 'number' ? start : parseFloat(String(start || "").replace(/,/g, ''));
+            end = typeof end === 'number' ? end : parseFloat(String(end || "").replace(/,/g, ''));
+            if (!isNaN(start) && !isNaN(end) && start !== null && end !== null) {
+              updates.diffKm = end - start;
+            }
+          }
         }
 
         try {
           // Import update if not already available
-          await update(ref(db, `collection_tracker/history/${id}`), { [field]: val });
+          await update(ref(db, `collection_tracker/history/${id}`), updates);
         } catch (error) {
           console.error("Failed to update field", error);
         }
