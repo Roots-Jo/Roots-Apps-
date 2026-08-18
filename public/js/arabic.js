@@ -229,7 +229,15 @@ window.ARABIC_TRANSLATIONS = {
   "shift_total": "المجموع:",
   "shift_toast_in": "تم تسجيل الدخول بنجاح!",
   "shift_toast_out": "تم تسجيل الخروج بنجاح!",
-  "shift_toast_del": "تم حذف المناوبة",
+  "shift_toast_del": "تم حذف المناوبة بنجاح",
+  
+  // --- New Additions ---
+  "order_tab_fetching": "الجلب",
+  "order_tab_master": "الملف الرئيسي",
+  "order_tab_deliveries": "التسليمات",
+  "coll_prompt_manual_km": "يرجى إدخال الكيلومترات المقطوعة يدوياً:",
+  "coll_auto_km": "كم تلقائي",
+  "coll_manual_km": "كم يدوي",
   "shift_err_qr": "تنسيق QR غير صالح للتحقق من الموقع.",
   "shift_active_user": "المدة: ",
   "shift_no_history": "لا توجد مناوبات.",
@@ -633,6 +641,14 @@ window.ARABIC_TRANSLATIONS = {
     "shift_toast_in": "Punched in successfully!",
     "shift_toast_out": "Punched out successfully!",
     "shift_toast_del": "Shift deleted",
+    
+    // --- New Additions ---
+    "order_tab_fetching": "Order Fetching",
+    "order_tab_master": "Master Sheet",
+    "order_tab_deliveries": "Deliveries",
+    "coll_prompt_manual_km": "Please enter manual KM driven:",
+    "coll_auto_km": "Auto KM",
+    "coll_manual_km": "Manual KM",
     "shift_err_qr": "Invalid QR format for location verification.",
     "shift_active_user": "Duration: ",
     "shift_no_history": "No shifts found.",

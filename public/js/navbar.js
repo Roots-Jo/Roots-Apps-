@@ -72,7 +72,7 @@
       centerLinks += `<a href="/collection_tracker" class="${isActive('collection_tracker')}" data-i18n="nav_coll_tracker">${t('nav_coll_tracker', 'Collection Tracker')}</a>`;
     }
     if (userApps['orders']) {
-      centerLinks += `<a href="https://roots-weekly.web.app/" target="_blank" data-i18n="nav_orders">${t('nav_orders', 'Orders')}</a>`;
+      centerLinks += `<a href="/orders" class="${isActive('orders')}" data-i18n="nav_orders">${t('nav_orders', 'Orders')}</a>`;
     }
 
     if (username === "Roots" || localStorage.getItem("roots-isAdmin") === "true") {

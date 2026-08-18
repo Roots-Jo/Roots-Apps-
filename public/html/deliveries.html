@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deliveries - Roots Orders Exporter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/index.css?v=2.0.1">
+    <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
+    <link rel="stylesheet" href="../css/orders.css">
+    <script type="module" src="/js/auth.js"></script>
+    <script src="/js/arabic.js?v=2"></script>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+</head>
+<body>
+    <div id="navbar"></div>
+    <script src="/js/navbar.js?v=1.0.7"></script>
+    <nav class="orders-nav" style="width: 100%; border-bottom: 1px solid var(--border); margin-bottom: 0; background: var(--bg);">
+        <div class="nav-content" style="display: flex; justify-content: center; padding: 0 20px;">
+            <div class="nav-links" style="display: flex; gap: 2rem; padding-top: 10px;">
+                <a href="/orders" class="nav-link" data-i18n="order_tab_fetching" style="color: var(--muted); font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; padding-bottom: 4px;">Order Fetching</a>
+                <a href="/master-sheet" class="nav-link" data-i18n="order_tab_master" style="color: var(--muted); font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; padding-bottom: 4px;">Master Sheet</a>
+                <a href="/deliveries" class="nav-link" data-i18n="order_tab_deliveries" style="color: var(--orange); font-weight: 600; text-decoration: none; border-bottom: 3px solid var(--orange); padding-bottom: 4px;">Deliveries</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <main class="page-card" style="max-width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+                <h3 style="margin-top: 0; color: var(--dark); font-weight: 800; font-size: 24px; margin-bottom: 0;">Deliveries</h3>
+                
+                <div style="display: flex; gap: 24px; align-items: center;">
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted);">Total Orders</span>
+                        <span id="total-count" style="font-size: 24px; font-weight: 800; color: var(--orange);">0</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted);">Rows Shown</span>
+                        <span id="shown-count" style="font-size: 24px; font-weight: 800; color: var(--orange);">0</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted);">To Be Delivered</span>
+                        <span id="to-deliver-count" style="font-size: 24px; font-weight: 800; color: var(--blue);">0</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted);">Delivered</span>
+                        <span id="delivered-count" style="font-size: 24px; font-weight: 800; color: var(--green);">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters & Actions -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                    <div class="input-group">
+                        <label for="filter-start-date" class="section-label">Start Date</label>
+                    <input type="date" id="filter-start-date" class="sbox">
+                </div>
+                <div class="input-group">
+                    <label for="filter-end-date" class="section-label">End Date</label>
+                    <input type="date" id="filter-end-date" class="sbox">
+                </div>
+                <div class="input-group">
+                    <label for="filter-area" class="section-label">Mapped Area</label>
+                    <input type="text" id="filter-area" class="sbox" placeholder="Filter Area..." list="area-datalist">
+                    <datalist id="area-datalist"></datalist>
+                </div>
+                <div class="input-group">
+                    <label for="filter-neighborhood" class="section-label">Neighborhood</label>
+                    <input type="text" id="filter-neighborhood" class="sbox" placeholder="Filter Neighborhood..." list="neighborhood-datalist">
+                    <datalist id="neighborhood-datalist"></datalist>
+                </div>
+                </div>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                    <button id="manage-status-btn" class="run-btn" style="background: var(--bg); color: var(--dark); border: 1px solid var(--bdr); margin: 0;">Manage Statuses</button>
+                    <button id="delete-selected-btn" class="run-btn" style="background: var(--red); display: none; margin: 0;">Delete Selected</button>
+                    <button id="save-deliveries-btn" class="run-btn" style="margin: 0;">Save Changes</button>
+                    <button type="button" id="export-btn" class="export-btn" style="margin: 0;"><span>Export to Excel</span></button>
+                </div>
+            </div>
+
+            <div class="table-container" style="border: 1px solid var(--bdr); border-radius: 8px; overflow-x: auto; max-height: 600px; overflow-y: auto; scroll-snap-type: y mandatory; scroll-padding-top: 44px;">
+                <table style="width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 13px; white-space: nowrap;">
+                    <thead style="position: sticky; top: 0; z-index: 20;">
+                        <tr>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);"><input type="checkbox" id="select-all-cb"></th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Order ID</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Created At</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">First Name</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Last Name</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">City</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">State</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Address 1</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Mobile</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Total</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <input type="checkbox" id="select-all-tbd-cb" style="margin: 0;"> <span>To Be Delivered</span>
+                                </div>
+                            </th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Status</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Mapped Area</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Mapped Area Ar</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Neighborhood</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Neighborhood Ar</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Note</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); border-bottom: 1px solid var(--border-light); background: var(--bg);">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deliveries-table-body">
+                        <tr><td colspan="17" style="padding: 12px; text-align: center;">Loading deliveries...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="status-message" class="hidden" style="margin-top: 16px;"></div>
+        </main>
+    </div>
+
+    <!-- Mapping Modal -->
+    <div id="mapping-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; display: none;">
+        <div class="modal-content page-card" style="padding: 2.5rem; width: 450px; max-width: 90%; box-shadow: var(--shadow-hover); border: 1px solid var(--bdr); border-radius: 8px;">
+            <h3 style="margin-top: 0; color: var(--dark); font-weight: 800; font-size: 24px; margin-bottom: 8px;">Add to Master Sheet</h3>
+            <p style="font-size: 14px; margin-bottom: 24px; color: var(--muted);">Address: <strong id="modal-address-text" style="color: var(--dark);"></strong></p>
+            
+            <div class="input-group" style="margin-bottom: 16px;">
+                <label for="new-keyword" class="section-label">Keyword to match</label>
+                <input type="text" id="new-keyword" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. airport road, jabal amman (comma separates full phrases)">
+            </div>
+            
+            <div class="input-group" style="margin-bottom: 24px;">
+                <label for="new-area-select" class="section-label">Map to Area</label>
+                <div style="display: flex; gap: 8px;">
+                    <div class="custom-dropdown" id="area-custom-dropdown" style="width: 100%; position: relative;">
+                        <div class="sbox dropdown-toggle" id="area-dropdown-toggle" style="width: 100%; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                            <span id="area-dropdown-text">Select an Area...</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-menu hidden" id="area-dropdown-menu" style="position: absolute; width: 100%; background: var(--bg); border: 1px solid var(--bdr); border-radius: 6px; z-index: 10; max-height: 250px; overflow-y: auto; box-shadow: var(--shadow-hover); display: none; flex-direction: column;">
+                            <div style="padding: 8px; position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--bdr);">
+                                <input type="text" id="area-search-input" class="sbox" placeholder="Search area..." style="width: 100%; box-sizing: border-box; padding: 6px 12px; height: 32px;">
+                            </div>
+                            <div id="area-options-list" style="display: flex; flex-direction: column; padding: 4px 0;"></div>
+                        </div>
+                    </div>
+                    <button type="button" id="toggle-new-area-btn" class="run-btn" style="margin: 0; padding: 0 12px; white-space: nowrap; height: 42px;">+ New</button>
+                </div>
+            </div>
+            
+            <div id="new-area-fields" class="hidden" style="margin-bottom: 24px; padding: 12px; border: 1px solid var(--bdr); border-radius: 6px; background: rgba(0,0,0,0.02); display: none;">
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <label for="new-area-en" class="section-label">New Area Name (English)</label>
+                    <input type="text" id="new-area-en" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. Abdoun">
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="new-area-ar" class="section-label">New Area Name (Arabic)</label>
+                    <input type="text" id="new-area-ar" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. عبدون (Optional)">
+                </div>
+            </div>
+            
+            <div id="neighborhood-fields" style="margin-bottom: 24px; padding: 12px; border: 1px solid var(--bdr); border-radius: 6px; background: rgba(0,0,0,0.02);">
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <label for="neighborhood-en" class="section-label">Neighborhood (English)</label>
+                    <input type="text" id="neighborhood-en" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. 1st Circle (Optional)">
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="neighborhood-ar" class="section-label">Neighborhood (Arabic)</label>
+                    <input type="text" id="neighborhood-ar" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. الدوار الاول (Optional)" dir="rtl">
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 1rem;">
+                <button id="cancel-mapping-btn" style="padding: 0 1.2rem; height: 42px; border: 1px solid var(--bdr); background: var(--bg); color: var(--dark); border-radius: 6px; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; transition: all 0.15s;">Cancel</button>
+                <button id="save-mapping-btn" class="run-btn" style="margin: 0;">Save Mapping</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Statuses Modal -->
+    <div id="status-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; display: none;">
+        <div class="modal-content page-card" style="padding: 2.5rem; width: 450px; max-width: 90%; box-shadow: var(--shadow-hover); border: 1px solid var(--bdr); border-radius: 8px;">
+            <h3 style="margin-top: 0; color: var(--dark); font-weight: 800; font-size: 24px; margin-bottom: 24px;">Manage Statuses</h3>
+            
+            <div id="status-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; max-height: 250px; overflow-y: auto;">
+                <!-- Status rows injected here -->
+            </div>
+            
+            <div class="input-group" style="margin-bottom: 24px; display: flex; flex-direction: row; gap: 8px;">
+                <input type="text" id="new-status-input" class="sbox" style="flex: 1;" placeholder="New status name...">
+                <button type="button" id="add-status-btn" class="run-btn" style="margin: 0; padding: 0 16px;">Add</button>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" id="close-status-modal-btn" class="run-btn" style="background: transparent; color: var(--muted); border: 1px solid var(--bdr);">Close</button>
+                <button type="button" id="save-status-btn" class="run-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/deliveries.js"></script>
+    <script src="../js/deliveriesMapping.js"></script>
+</body>
+</html>

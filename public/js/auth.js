@@ -15,6 +15,7 @@
   else if (path.includes("pickup_tracker")) appId = "pickup_tracker";
   else if (path.includes("cases_tracker")) appId = "cases_tracker";
   else if (path.includes("admin")) appId = "admin";
+  else if (path.includes("orders") || path.includes("deliveries") || path.includes("master-sheet")) appId = "orders";
 
   if (!appId) return; // Not an access-controlled app page
 

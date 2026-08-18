@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roots Orders Exporter</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/index.css?v=2.0.1">
+    <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
+    <link rel="stylesheet" href="../css/orders.css">
+    <script type="module" src="/js/auth.js"></script>
+    <script src="/js/arabic.js?v=2"></script>
+    <script>
+        // Prevent FOUC by initializing theme before body rendering
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+</head>
+<body>
+    <div id="navbar"></div>
+    <script src="/js/navbar.js?v=1.0.7"></script>
+    <nav class="orders-nav" style="width: 100%; border-bottom: 1px solid var(--border); margin-bottom: 0; background: var(--bg);">
+        <div class="nav-content" style="display: flex; justify-content: center; padding: 0 20px;">
+            <div class="nav-links" style="display: flex; gap: 2rem; padding-top: 10px;">
+                <a href="/orders" class="nav-link" data-i18n="order_tab_fetching" style="color: var(--orange); font-weight: 600; text-decoration: none; border-bottom: 3px solid var(--orange); padding-bottom: 4px;">Order Fetching</a>
+                <a href="/master-sheet" class="nav-link" data-i18n="order_tab_master" style="color: var(--muted); font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; padding-bottom: 4px;">Master Sheet</a>
+                <a href="/deliveries" class="nav-link" data-i18n="order_tab_deliveries" style="color: var(--muted); font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; padding-bottom: 4px;">Deliveries</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Header removed as requested -->
+
+        <main class="page-card">
+            <form id="fetch-form">
+                <div class="controls-bar">
+                    <div class="controls-left">
+                        <div class="input-group">
+                            <label class="section-label">Select Sellers</label>
+                            <div class="custom-dropdown" id="sellers-dropdown">
+                                <div class="sbox dropdown-toggle" id="sellers-toggle">
+                                    <span id="sellers-toggle-text">Loading...</span>
+                                    <span class="arrow">▼</span>
+                                </div>
+                                <div class="checkbox-container" id="sellers-container">
+                                    <div class="loader-small"></div> <span class="muted-text">Loading sellers...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="start-date" class="section-label">Start Date</label>
+                            <input type="date" id="start-date" class="sbox" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="end-date" class="section-label">End Date</label>
+                            <input type="date" id="end-date" class="sbox" required>
+                        </div>
+
+                    </div>
+
+                    <div class="controls-right">
+                        <button type="submit" id="fetch-btn" class="run-btn">
+                            <span class="btn-text">Fetch Orders</span>
+                            <div class="loader hidden" id="btn-loader"></div>
+                        </button>
+                        
+                        <button type="button" id="export-btn" class="export-btn hidden">
+                            <span>Export to Excel</span>
+                        </button>
+                        
+                        <button type="button" id="add-deliveries-btn" class="export-btn hidden" style="background: var(--blue); color: var(--white); border: none;">
+                            <span>Add to Deliveries</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+            
+            <div id="status-message" class="status-message hidden badge">
+                <!-- Status messages will appear here -->
+            </div>
+
+            <div id="empty-state" class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3>No Orders Displayed</h3>
+                <p>Select your sellers and date range to fetch orders.</p>
+            </div>
+
+            <div class="tabs-container hidden" id="tabs-container" style="margin-bottom: 1.5rem; border-bottom: 2px solid var(--bdr); display: flex; gap: 1rem;">
+                <button class="tab-btn active" id="tab-raw" style="background: none; border: none; padding: 0.5rem 1rem; font-weight: 700; cursor: pointer; color: var(--orange); border-bottom: 3px solid var(--orange); font-family: inherit; font-size: 14px;">Raw Orders</button>
+                <button class="tab-btn" id="tab-mapped" style="background: none; border: none; padding: 0.5rem 1rem; font-weight: 600; cursor: pointer; color: var(--muted); border-bottom: 3px solid transparent; font-family: inherit; font-size: 14px;">Mapped Orders</button>
+            </div>
+
+            <div class="table-container hidden" id="table-container">
+                <table id="orders-table">
+                    <thead>
+                        <tr id="table-head">
+                            <!-- Headers will be injected here -->
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mapping Modal -->
+    <div id="mapping-modal" class="modal hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; display: none;">
+        <div class="modal-content page-card" style="padding: 2.5rem; width: 450px; max-width: 90%; box-shadow: var(--shadow-hover); border: 1px solid var(--bdr); border-radius: 8px;">
+            <h3 style="margin-top: 0; color: var(--dark); font-weight: 800; font-size: 24px; margin-bottom: 8px;">Add to Master Sheet</h3>
+            <p style="font-size: 14px; margin-bottom: 24px; color: var(--muted);">Address: <strong id="modal-address-text" style="color: var(--dark);"></strong></p>
+            
+            <div class="input-group" style="margin-bottom: 16px;">
+                <label for="new-keyword" class="section-label">Keyword to match</label>
+                <input type="text" id="new-keyword" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. airport road, jabal amman (comma separates full phrases)">
+            </div>
+            
+            <div class="input-group" style="margin-bottom: 24px;">
+                <label for="new-area-select" class="section-label">Map to Area</label>
+                <div style="display: flex; gap: 8px;">
+                    <div class="custom-dropdown" id="area-custom-dropdown" style="width: 100%; position: relative;">
+                        <div class="sbox dropdown-toggle" id="area-dropdown-toggle" style="width: 100%; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                            <span id="area-dropdown-text">Select an Area...</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-menu hidden" id="area-dropdown-menu" style="position: absolute; width: 100%; background: var(--bg); border: 1px solid var(--bdr); border-radius: 6px; z-index: 10; max-height: 250px; overflow-y: auto; box-shadow: var(--shadow-hover); display: none; flex-direction: column;">
+                            <div style="padding: 8px; position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--bdr);">
+                                <input type="text" id="area-search-input" class="sbox" placeholder="Search area..." style="width: 100%; box-sizing: border-box; padding: 6px 12px; height: 32px;">
+                            </div>
+                            <div id="area-options-list" style="display: flex; flex-direction: column; padding: 4px 0;"></div>
+                        </div>
+                    </div>
+                    <button type="button" id="toggle-new-area-btn" class="run-btn" style="margin: 0; padding: 0 12px; white-space: nowrap; height: 42px;">+ New</button>
+                </div>
+            </div>
+            
+            <div id="new-area-fields" class="hidden" style="margin-bottom: 24px; padding: 12px; border: 1px solid var(--bdr); border-radius: 6px; background: rgba(0,0,0,0.02); display: none;">
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <label for="new-area-en" class="section-label">New Area Name (English)</label>
+                    <input type="text" id="new-area-en" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. Abdoun">
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="new-area-ar" class="section-label">New Area Name (Arabic)</label>
+                    <input type="text" id="new-area-ar" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. عبدون (Optional)">
+                </div>
+            </div>
+            
+            <div id="neighborhood-fields" style="margin-bottom: 24px; padding: 12px; border: 1px solid var(--bdr); border-radius: 6px; background: rgba(0,0,0,0.02);">
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <label for="neighborhood-en" class="section-label">Neighborhood (English)</label>
+                    <input type="text" id="neighborhood-en" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. 1st Circle (Optional)">
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label for="neighborhood-ar" class="section-label">Neighborhood (Arabic)</label>
+                    <input type="text" id="neighborhood-ar" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="e.g. الدوار الاول (Optional)" dir="rtl">
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 1rem;">
+                <button id="cancel-mapping-btn" style="padding: 0 1.2rem; height: 42px; border: 1px solid var(--bdr); background: var(--bg); color: var(--dark); border-radius: 6px; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 14px; transition: all 0.15s;">Cancel</button>
+                <button id="save-mapping-btn" class="run-btn" style="margin: 0;">Save Mapping</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/orders_app.js"></script>
+</body>
+</html>

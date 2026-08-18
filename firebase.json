@@ -1,83 +1,148 @@
 {
-  "hosting": {
-    "site": "roots-apps",
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "/",
-        "destination": "/html/index.html"
-      },
-      {
-        "source": "/roots_cod_dashboard",
-        "destination": "/html/roots_cod_dashboard.html"
-      },
-      {
-        "source": "/roots_cod_dashboard.html",
-        "destination": "/html/roots_cod_dashboard.html"
-      },
-      {
-        "source": "/Roots Weekly Cycle Dashboard",
-        "destination": "/html/Roots Weekly Cycle Dashboard.html"
-      },
-      {
-        "source": "/Roots Weekly Cycle Dashboard.html",
-        "destination": "/html/Roots Weekly Cycle Dashboard.html"
-      },
-      {
-        "source": "/pickup_tracker",
-        "destination": "/html/pickup_tracker.html"
-      },
-      {
-        "source": "/pickup_tracker.html",
-        "destination": "/html/pickup_tracker.html"
-      },
-      {
-        "source": "/admin",
-        "destination": "/html/admin.html"
-      },
-      {
-        "source": "/admin.html",
-        "destination": "/html/admin.html"
-      },
-      {
-        "source": "/cases_tracker",
-        "destination": "/html/cases_tracker.html"
-      },
-      {
-        "source": "/cases_tracker.html",
-        "destination": "/html/cases_tracker.html"
-      },
-      {
-        "source": "/shift_tracker",
-        "destination": "/html/shift_tracker.html"
-      },
-      {
-        "source": "/shift_tracker.html",
-        "destination": "/html/shift_tracker.html"
-      },
-      {
-        "source": "/collection_tracker",
-        "destination": "/html/collection_tracker.html"
-      },
-      {
-        "source": "/collection_tracker.html",
-        "destination": "/html/collection_tracker.html"
-      },
-      {
-        "source": "/account_settings",
-        "destination": "/html/account_settings.html"
-      },
-      {
-        "source": "/account_settings.html",
-        "destination": "/html/account_settings.html"
-      }
-    ],
-    "cleanUrls": true,
-    "trailingSlash": false
-  }
+    "hosting":  {
+                    "site":  "roots-apps",
+                    "public":  "public",
+                    "ignore":  [
+                                   "firebase.json",
+                                   "**/.*",
+                                   "**/node_modules/**"
+                               ],
+                    "rewrites":  [
+                                     {
+                                         "source":  "/",
+                                         "destination":  "/html/index.html"
+                                     },
+                                     {
+                                         "source":  "/roots_cod_dashboard",
+                                         "destination":  "/html/roots_cod_dashboard.html"
+                                     },
+                                     {
+                                         "source":  "/roots_cod_dashboard.html",
+                                         "destination":  "/html/roots_cod_dashboard.html"
+                                     },
+                                     {
+                                         "source":  "/Roots Weekly Cycle Dashboard",
+                                         "destination":  "/html/Roots Weekly Cycle Dashboard.html"
+                                     },
+                                     {
+                                         "source":  "/Roots Weekly Cycle Dashboard.html",
+                                         "destination":  "/html/Roots Weekly Cycle Dashboard.html"
+                                     },
+                                     {
+                                         "source":  "/pickup_tracker",
+                                         "destination":  "/html/pickup_tracker.html"
+                                     },
+                                     {
+                                         "source":  "/pickup_tracker.html",
+                                         "destination":  "/html/pickup_tracker.html"
+                                     },
+                                     {
+                                         "source":  "/admin",
+                                         "destination":  "/html/admin.html"
+                                     },
+                                     {
+                                         "source":  "/admin.html",
+                                         "destination":  "/html/admin.html"
+                                     },
+                                     {
+                                         "source":  "/cases_tracker",
+                                         "destination":  "/html/cases_tracker.html"
+                                     },
+                                     {
+                                         "source":  "/cases_tracker.html",
+                                         "destination":  "/html/cases_tracker.html"
+                                     },
+                                     {
+                                         "source":  "/shift_tracker",
+                                         "destination":  "/html/shift_tracker.html"
+                                     },
+                                     {
+                                         "source":  "/shift_tracker.html",
+                                         "destination":  "/html/shift_tracker.html"
+                                     },
+                                     {
+                                         "source":  "/collection_tracker",
+                                         "destination":  "/html/collection_tracker.html"
+                                     },
+                                     {
+                                         "source":  "/collection_tracker.html",
+                                         "destination":  "/html/collection_tracker.html"
+                                     },
+                                     {
+                                         "source":  "/account_settings",
+                                         "destination":  "/html/account_settings.html"
+                                     },
+                                     {
+                                         "source":  "/account_settings.html",
+                                         "destination":  "/html/account_settings.html"
+                                     },
+                                     {
+                                         "destination":  "/html/orders.html",
+                                         "source":  "/orders"
+                                     },
+                                     {
+                                         "destination":  "/html/orders.html",
+                                         "source":  "/orders.html"
+                                     },
+                                     {
+                                         "destination":  "/html/deliveries.html",
+                                         "source":  "/deliveries"
+                                     },
+                                     {
+                                         "destination":  "/html/deliveries.html",
+                                         "source":  "/deliveries.html"
+                                     },
+                                     {
+                                         "destination":  "/html/master-sheet.html",
+                                         "source":  "/master-sheet"
+                                     },
+                                     {
+                                         "destination":  "/html/master-sheet.html",
+                                         "source":  "/master-sheet.html"
+                                     },
+                                     {
+                                         "function":  "getSellers",
+                                         "source":  "/fetchSellers"
+                                     },
+                                     {
+                                         "function":  "getOrders",
+                                         "source":  "/fetchOrders"
+                                     },
+                                     {
+                                         "function":  "saveMapping",
+                                         "source":  "/saveMapping"
+                                     },
+                                     {
+                                         "function":  "updateMappings",
+                                         "source":  "/updateMappings"
+                                     },
+                                     {
+                                         "function":  "saveDeliveries",
+                                         "source":  "/saveDeliveries"
+                                     },
+                                     {
+                                         "function":  "updateDeliveries",
+                                         "source":  "/updateDeliveries"
+                                     },
+                                     {
+                                         "function":  "updateStatuses",
+                                         "source":  "/updateStatuses"
+                                     }
+                                 ],
+                    "cleanUrls":  true,
+                    "trailingSlash":  false
+                },
+    "functions":  [
+                      {
+                          "ignore":  [
+                                         "node_modules",
+                                         ".git",
+                                         "firebase-debug.log",
+                                         "firebase-debug.*.log",
+                                         "*.local"
+                                     ],
+                          "source":  "functions",
+                          "codebase":  "default"
+                      }
+                  ]
 }

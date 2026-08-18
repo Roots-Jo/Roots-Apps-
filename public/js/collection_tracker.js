@@ -259,9 +259,34 @@ punchBtn.addEventListener("click", async () => {
         endLat, endLon
       );
       
+      const manualKmStr = await new Promise((resolve) => {
+        const modal = document.getElementById("km-modal");
+        const input = document.getElementById("manual-km-input");
+        const btnCancel = document.getElementById("km-modal-cancel");
+        const btnSubmit = document.getElementById("km-modal-submit");
+        
+        input.value = "";
+        modal.style.display = "flex";
+        
+        const cleanup = () => {
+          btnCancel.removeEventListener("click", onCancel);
+          btnSubmit.removeEventListener("click", onSubmit);
+          modal.style.display = "none";
+        };
+        
+        const onCancel = () => { cleanup(); resolve(null); };
+        const onSubmit = () => { cleanup(); resolve(input.value); };
+        
+        btnCancel.addEventListener("click", onCancel);
+        btnSubmit.addEventListener("click", onSubmit);
+      });
+      
+      const manualKm = manualKmStr && manualKmStr.trim() !== "" ? parseFloat(manualKmStr) : null;
+      
       const newTrip = {
         username: currentUser,
         date: new Date(startTime).toISOString().split('T')[0],
+        day: new Date(startTime).toLocaleDateString("en-US", { weekday: "long" }),
         startTime: startTime,
         endTime: endTime,
         durationFormatted: formatTime(durationMs),
@@ -269,6 +294,7 @@ punchBtn.addEventListener("click", async () => {
         locationId: activeTripData.locationId || "",
         price: parseFloat(activeTripData.rate || 0),
         distanceKm: distanceKm,
+        manualKm: manualKm,
         weekIdentifier: getWeekIdentifier(new Date(startTime)),
         startLat: activeTripData.startLat || null,
         startLon: activeTripData.startLon || null,
@@ -457,7 +483,7 @@ if (isAdmin) {
       
       html += `
         <tr class="week-separator" style="pointer-events: none;">
-          <td colspan="11" style="background: rgba(39, 174, 96, 0.05); padding: 8px 16px; border-bottom: 2px solid var(--border); border-top: 2px solid var(--border);">
+          <td colspan="12" style="background: rgba(39, 174, 96, 0.05); padding: 8px 16px; border-bottom: 2px solid var(--border); border-top: 2px solid var(--border);">
             <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 11px; color: var(--green); text-transform: uppercase;">
               <span>${wk}</span>
               <span>Subtotal: ${weekObj.weekTotal.toFixed(2)} JOD</span>
@@ -467,21 +493,45 @@ if (isAdmin) {
       `;
       
       html += weekObj.trips.map(trip => {
-        const dayStr = new Date(trip.startTime).toLocaleDateString("en-US", { weekday: "long" });
-        const distanceStr = trip.distanceKm !== undefined && trip.distanceKm !== null ? `${trip.distanceKm} km` : "-";
+        let locSelectHtml = '<select class="inline-edit-select" data-id="' + trip.id + '" data-field="locationName" style="border:none; background:transparent; font-family:var(--font); font-weight:600; font-size:14px; width:100%; outline:none; cursor:pointer;">';
+        Object.keys(availableLocations).forEach(k => {
+            const l = availableLocations[k];
+            const sel = trip.locationName === l.name ? 'selected' : '';
+            locSelectHtml += '<option value="' + l.name + '" data-rate="' + l.rate + '" ' + sel + '>' + l.name + '</option>';
+        });
+        locSelectHtml += '</select>';
+
+        const startDate = new Date(trip.startTime);
+        const startTime24 = startDate.getHours().toString().padStart(2, '0') + ':' + startDate.getMinutes().toString().padStart(2, '0');
+        const endDate = new Date(trip.endTime);
+        const endTime24 = endDate.getHours().toString().padStart(2, '0') + ':' + endDate.getMinutes().toString().padStart(2, '0');
+
+        const computedDayStr = new Date(trip.startTime).toLocaleDateString("en-US", { weekday: "long" });
+        const dayVal = trip.day || computedDayStr;
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        let daySelectHtml = '<select class="inline-edit-day" data-id="' + trip.id + '" style="padding:4px; border:1px solid var(--border); border-radius:4px; font-family:var(--font); font-size:13px; cursor:pointer;">';
+        days.forEach(d => {
+            const sel = dayVal === d ? 'selected' : '';
+            daySelectHtml += '<option value="' + d + '" ' + sel + '>' + d + '</option>';
+        });
+        daySelectHtml += '</select>';
+
+        const distanceStr = trip.distanceKm !== undefined && trip.distanceKm !== null ? `${trip.distanceKm}` : "-";
+        const manualDistanceStr = trip.manualKm !== undefined && trip.manualKm !== null ? `${trip.manualKm}` : "-";
         
         return `
           <tr>
             <td><input type="checkbox" class="trip-checkbox" data-id="${trip.id}" style="pointer-events: auto;"></td>
-            <td style="font-weight: 600;">${trip.username}</td>
-            <td>${trip.date}</td>
-            <td style="color: var(--dim); font-size: 13px;">${dayStr}</td>
-            <td>${formatDatetimeLocal(trip.startTime)}</td>
-            <td>${formatDatetimeLocal(trip.endTime)}</td>
-            <td style="font-weight: 600;">${trip.locationName}</td>
-            <td>${distanceStr}</td>
-            <td style="font-family: var(--mono); font-weight: 600;">${trip.durationFormatted}</td>
-            <td style="font-weight: 600; color: var(--accent);">${(trip.price || 0).toFixed(2)}</td>
+            <td contenteditable="true" data-field="username" style="font-weight: 600;">${trip.username}</td>
+            <td><input type="date" value="${trip.date}" class="inline-edit-date" data-id="${trip.id}" data-start="${trip.startTime}" data-end="${trip.endTime}" style="padding:4px; border:1px solid var(--border); border-radius:4px; font-family:var(--font); font-size:13px; cursor:pointer;"></td>
+            <td>${daySelectHtml}</td>
+            <td><input type="time" value="${startTime24}" class="inline-edit-time" data-id="${trip.id}" data-field="startTime" data-date="${trip.date}" style="padding:4px; border:1px solid var(--border); border-radius:4px; font-family:var(--font); font-size:13px; cursor:pointer;"></td>
+            <td><input type="time" value="${endTime24}" class="inline-edit-time" data-id="${trip.id}" data-field="endTime" data-date="${trip.date}" style="padding:4px; border:1px solid var(--border); border-radius:4px; font-family:var(--font); font-size:13px; cursor:pointer;"></td>
+            <td style="font-weight: 600;">${locSelectHtml}</td>
+            <td contenteditable="true" data-field="distanceKm">${distanceStr}</td>
+            <td contenteditable="true" data-field="manualKm">${manualDistanceStr}</td>
+            <td contenteditable="true" data-field="durationFormatted" style="font-family: var(--mono); font-weight: 600;">${trip.durationFormatted}</td>
+            <td contenteditable="true" data-field="price" style="font-weight: 600; color: var(--accent);">${(trip.price || 0).toFixed(2)}</td>
             <td>
               <button class="btn-action btn-delete" data-id="${trip.id}" title="Delete Trip" style="pointer-events: auto;">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -527,7 +577,68 @@ if (isAdmin) {
   }
 
   if (historyTbody) {
-    historyTbody.addEventListener("change", (e) => {
+    historyTbody.addEventListener("focusout", async (e) => {
+      if (e.target.hasAttribute("contenteditable")) {
+        const id = e.target.closest("tr").querySelector(".btn-delete").getAttribute("data-id");
+        const field = e.target.getAttribute("data-field");
+        let val = e.target.textContent.trim();
+        
+        if (field === "price" || field === "distanceKm" || field === "manualKm") {
+          val = parseFloat(val);
+          if (isNaN(val)) val = null;
+        }
+
+        try {
+          // Import update if not already available
+          await update(ref(db, `collection_tracker/history/${id}`), { [field]: val });
+        } catch (error) {
+          console.error("Failed to update field", error);
+        }
+      }
+    });
+
+    historyTbody.addEventListener("change", async (e) => {
+      if (e.target.classList.contains("inline-edit-date")) {
+          const id = e.target.getAttribute("data-id");
+          const val = e.target.value; // YYYY-MM-DD
+          const oldStart = parseInt(e.target.getAttribute("data-start"));
+          const oldEnd = parseInt(e.target.getAttribute("data-end"));
+          
+          const s = new Date(oldStart);
+          const newStart = new Date(`${val}T${s.getHours().toString().padStart(2,'0')}:${s.getMinutes().toString().padStart(2,'0')}:00`).getTime();
+          
+          const en = new Date(oldEnd);
+          const newEnd = new Date(`${val}T${en.getHours().toString().padStart(2,'0')}:${en.getMinutes().toString().padStart(2,'0')}:00`).getTime();
+
+          try { 
+              await update(ref(db, `collection_tracker/history/${id}`), { 
+                  date: val,
+                  startTime: newStart,
+                  endTime: newEnd
+              }); 
+          } catch(err){}
+      }
+      else if (e.target.classList.contains("inline-edit-day")) {
+          const id = e.target.getAttribute("data-id");
+          const val = e.target.value;
+          try { await update(ref(db, `collection_tracker/history/${id}`), { day: val }); } catch(err){}
+      }
+      else if (e.target.classList.contains("inline-edit-time")) {
+          const id = e.target.getAttribute("data-id");
+          const field = e.target.getAttribute("data-field");
+          const timeVal = e.target.value; 
+          const dateVal = e.target.getAttribute("data-date"); 
+          const newTimestamp = new Date(`${dateVal}T${timeVal}:00`).getTime();
+          try { await update(ref(db, `collection_tracker/history/${id}`), { [field]: newTimestamp }); } catch(err){}
+      }
+      else if (e.target.classList.contains("inline-edit-select")) {
+          const id = e.target.getAttribute("data-id");
+          const val = e.target.value;
+          const opt = e.target.options[e.target.selectedIndex];
+          const rate = parseFloat(opt.getAttribute("data-rate"));
+          try { await update(ref(db, `collection_tracker/history/${id}`), { locationName: val, price: rate }); } catch(err){}
+      }
+
       if (e.target.classList.contains("trip-checkbox")) {
         updateBulkDeleteButton();
         

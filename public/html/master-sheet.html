@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Sheet - Roots Orders Exporter</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/index.css?v=2.0.1">
+    <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
+    <link rel="stylesheet" href="../css/orders.css">
+    <script type="module" src="/js/auth.js"></script>
+    <script src="/js/arabic.js?v=2"></script>
+    <script>
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+</head>
+<body>
+    <div id="navbar"></div>
+    <script src="/js/navbar.js?v=1.0.7"></script>
+    <nav class="orders-nav" style="width: 100%; border-bottom: 1px solid var(--border); margin-bottom: 0; background: var(--bg);">
+        <div class="nav-content" style="display: flex; justify-content: center; padding: 0 20px;">
+            <div class="nav-links" style="display: flex; gap: 2rem; padding-top: 10px;">
+                <a href="/orders" class="nav-link" data-i18n="order_tab_fetching" style="color: var(--muted); font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; padding-bottom: 4px;">Order Fetching</a>
+                <a href="/master-sheet" class="nav-link" data-i18n="order_tab_master" style="color: var(--orange); font-weight: 600; text-decoration: none; border-bottom: 3px solid var(--orange); padding-bottom: 4px;">Master Sheet</a>
+                <a href="/deliveries" class="nav-link" data-i18n="order_tab_deliveries" style="color: var(--muted); font-weight: 600; text-decoration: none; border-bottom: 3px solid transparent; padding-bottom: 4px;">Deliveries</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <main class="page-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h3 style="margin-top: 0; color: var(--dark); font-weight: 800; font-size: 24px; margin-bottom: 0;">Master Mappings</h3>
+                <button id="save-all-btn" class="run-btn" style="margin: 0;">Save Changes</button>
+            </div>
+            
+            <p style="font-size: 14px; margin-bottom: 16px; color: var(--muted);">View and modify your keyword mappings here.</p>
+
+            <div class="input-group" style="margin-bottom: 16px;">
+                <input type="text" id="mapping-search-input" class="sbox" style="width: 100%; box-sizing: border-box;" placeholder="Search keywords or areas...">
+            </div>
+
+            <div class="table-container" style="border: 1px solid var(--bdr); border-radius: 8px; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                    <thead>
+                        <tr style="background: var(--bg); border-bottom: 2px solid var(--bdr);">
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); min-width: 150px;">Keyword</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); min-width: 250px;">Area (English)</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); min-width: 250px;">Area (Arabic)</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); min-width: 200px;">Neighborhood (English)</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); min-width: 200px;">Neighborhood (Arabic)</th>
+                            <th style="padding: 12px; font-weight: 600; color: var(--dark); width: 100px; min-width: 100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mappings-table-body">
+                        <tr><td colspan="6" style="padding: 12px; text-align: center;">Loading mappings...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="status-message" class="hidden" style="margin-top: 16px;"></div>
+        </main>
+    </div>
+
+    <script src="../js/master-sheet.js"></script>
+</body>
+</html>
