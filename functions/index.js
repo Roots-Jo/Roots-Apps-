@@ -11,7 +11,7 @@ const path = require('path');
 // IN PRODUCTION: Use Firebase Secret Manager for OMNIFUL_API_TOKEN.
 require("dotenv").config();
 
-exports.getOrders = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+exports.getOrders = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -129,7 +129,7 @@ exports.getOrders = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.
   });
 });
 
-exports.getSellers = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+exports.getSellers = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "GET" && req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -168,7 +168,7 @@ exports.getSellers = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https
   });
 });
 
-exports.saveMapping = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+exports.saveMapping = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -213,7 +213,7 @@ exports.saveMapping = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).http
   });
 });
 
-exports.updateMappings = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+exports.updateMappings = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -242,7 +242,7 @@ exports.updateMappings = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).h
   });
 });
 
-exports.saveDeliveries = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+exports.saveDeliveries = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -286,7 +286,7 @@ exports.saveDeliveries = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).h
   });
 });
 
-exports.updateDeliveries = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+exports.updateDeliveries = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -318,7 +318,7 @@ exports.updateDeliveries = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] })
   });
 });
 
-exports.updateStatuses = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+exports.updateStatuses = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -341,7 +341,7 @@ exports.updateStatuses = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).h
     }
   });
 });
-exports.getCODOrders = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+exports.getCODOrders = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
