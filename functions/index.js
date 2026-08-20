@@ -1,5 +1,5 @@
 ﻿// Redeploy trigger
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const logger = require("firebase-functions/logger");
 const axios = require("axios");
 const cors = require("cors")({ origin: true });
