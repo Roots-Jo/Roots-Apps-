@@ -8,34 +8,137 @@
 <link rel="stylesheet" href="/css/roots_cod_dashboard.css">
 <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
 <script type="module" src="/js/auth.js"></script>
-  <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="/js/arabic.js?v=2"></script>
-  </head>
+<style>
+  .fetch-section {
+    background: var(--bg);
+    border: 1px solid var(--bdr);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .form-group label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .form-group input {
+    padding: 10px;
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    background: var(--bg-hover);
+    color: var(--dark);
+  }
+  .hbtn.fetch {
+    padding: 10px 20px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .hbtn.fetch:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .preview-table-container {
+    margin: 20px;
+    background: var(--bg);
+    border: 1px solid var(--bdr);
+    border-radius: 12px;
+    padding: 20px;
+    display: none;
+  }
+  .preview-table-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+  }
+  .table-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  table.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table.preview-table th, table.preview-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--bdr);
+    font-size: 13px;
+  }
+  table.preview-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    font-weight: 600;
+    color: var(--muted);
+  }
+</style>
+</head>
 <body>
 
   <div id="navbar"></div>
   <script src="/js/navbar.js?v=1.0.7"></script>
 
-  <!-- Upload View -->
+  <!-- Upload & Fetch View -->
   <div id="uploadView">
     <div class="upload-hero">
       <h1 data-i18n="cod_hero_title">COD <span>Reconciliation</span></h1>
-      <p data-i18n="cod_hero_sub">Upload your Orders and Shipping Partner sheets to reconcile</p>
+      <p data-i18n="cod_hero_sub">Fetch Live Orders and Upload Shipping Partner sheets to reconcile</p>
       <button class="hbtn" id="viewHistoryBtn" style="margin-top: 15px; background: var(--bg); color: var(--dark); border: 1px solid var(--bdr);" data-i18n="cod_btn_history">View Past Reconciliations</button>
     </div>
 
-    <div class="ugrid">
-      <div class="drop-card" id="dropOrders">
-        <div class="di">📄</div>
-        <div class="dsrc" data-i18n="cod_lbl_roots">ROOTS</div>
-        <div class="dlbl" data-i18n="cod_hint_orders">Drop Orders CSV/Excel here</div>
-        <div class="dhint" data-i18n="cod_hint_browse">or click to browse</div>
-        <input type="file" id="ordersFile" accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
-        <div class="dfiles" id="ordersFileList"></div>
+    <!-- Fetch Orders API -->
+    <div class="fetch-section">
+      <div class="form-group">
+        <label>Start Date</label>
+        <input type="date" id="startDate">
       </div>
+      <div class="form-group">
+        <label>End Date</label>
+        <input type="date" id="endDate">
+      </div>
+      <button class="hbtn fetch" id="fetchOrdersBtn">Fetch COD Orders</button>
+      <div id="fetchStatus" style="font-size: 13px; color: var(--muted); margin-left: auto;"></div>
+    </div>
 
+    <!-- Preview Fetched Orders -->
+    <div class="preview-table-container" id="previewContainer">
+      <h3>API Orders Preview (<span id="previewCount">0</span>)</h3>
+      <div class="table-wrapper">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Date</th>
+              <th>Net Amount</th>
+              <th>Status</th>
+              <th>Tags</th>
+              <th>Order Remarks (Note)</th>
+              <th>Shipment Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="previewTableBody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="ugrid">
       <div class="drop-card" id="dropPartners">
         <div class="di">🚚</div>
         <div class="dsrc" data-i18n="cod_lbl_partners">PARTNERS</div>
@@ -46,13 +149,12 @@
       </div>
     </div>
 
-
     <button class="run-btn" id="runReconciliationBtn" disabled data-i18n="cod_btn_run">Run Reconciliation</button>
     <div class="run-err" id="runError"></div>
   </div>
 
   <!-- Dashboard View -->
-  <div id="dashboardView">
+  <div id="dashboardView" style="display: none;">
     <div class="topbar">
       <div>
         <div class="topbar-title" data-i18n="cod_res_title">Reconciliation Results</div>
@@ -150,8 +252,8 @@
           </tbody>
         </table>
       </div>
-      <div class="pagination" id="outliersPagination">
-        <button id="outliersPrev" disabled>Previous</button>
+      <div class="pagination" id="outliersPagination" style="padding: 10px 16px; border-top: 1px solid var(--bdr); display: flex; justify-content: space-between; align-items: center;">
+        <button id="outliersPrev" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Previous</button>
         <span id="outliersPageInfo">Page 1 of 1</span>
             <button id="outliersNext" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Next</button>
           </div>
@@ -159,7 +261,6 @@
       </div>
     </div>
     
-    <!-- History Section moved to separate view -->
   </div>
 
   <!-- History View -->
@@ -196,6 +297,3 @@
 <script type="module" src="/js/roots_cod_dashboard.js"></script>
 </body>
 </html>
-
-
-

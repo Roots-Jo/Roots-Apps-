@@ -15,56 +15,38 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Setup your new COD logic here
-
 const t = (key, fb) => window.i18n && window.i18n.t(key) !== key ? window.i18n.t(key) : fb;
 
-// Auto-detection Keywords
-const KEYWORDS_ID = ['order id', 'order_id', 'reference number', 'reference no', 'reference', 'tracking number'];
-const KEYWORDS_AMT = ['cod amount', 'net', 'sender duo amt', 'amount', 'total cod', 'cod', 'total'];
-
-function detectColumn(headers, keywords) {
-  if (!headers || !headers.length) return null;
-  // Exact match first
-  for (let kw of keywords) {
-    const idx = headers.findIndex(h => h && h.toString().toLowerCase().trim() === kw);
-    if (idx !== -1) return headers[idx];
-  }
-  // Partial match fallback
-  for (let kw of keywords) {
-    const idx = headers.findIndex(h => h && h.toString().toLowerCase().trim().includes(kw));
-    if (idx !== -1) return headers[idx];
-  }
-  return null;
-}
-
-let rootsFileObj = null;
+let apiOrders = [];
 let partnerFileObjs = [];
 let reconciliationResult = null;
-window.codHistoryData = {}; // For history downloads
+window.codHistoryData = {};
 let previousView = 'uploadView';
-// Pagination & Filter State
 let currentPage = 1;
 const itemsPerPage = 25;
 let filteredOutliers = [];
 
-// UI Elements
 const ui = {
   uploadView: document.getElementById('uploadView'),
   dashboardView: document.getElementById('dashboardView'),
   historyView: document.getElementById('historyView'),
-  ordersFile: document.getElementById('ordersFile'),
+  
+  startDate: document.getElementById('startDate'),
+  endDate: document.getElementById('endDate'),
+  fetchOrdersBtn: document.getElementById('fetchOrdersBtn'),
+  fetchStatus: document.getElementById('fetchStatus'),
+  previewContainer: document.getElementById('previewContainer'),
+  previewCount: document.getElementById('previewCount'),
+  previewTableBody: document.getElementById('previewTableBody'),
+
   partnersFiles: document.getElementById('partnersFiles'),
-  ordersFileList: document.getElementById('ordersFileList'),
   partnersFileList: document.getElementById('partnersFileList'),
   runBtn: document.getElementById('runReconciliationBtn'),
   runError: document.getElementById('runError'),
-  dropOrders: document.getElementById('dropOrders'),
   dropPartners: document.getElementById('dropPartners'),
   viewHistoryBtn: document.getElementById('viewHistoryBtn'),
   backFromHistoryBtn: document.getElementById('backFromHistoryBtn'),
   
-  // Dashboard elements
   statTotalCod: document.getElementById('statTotalCod'),
   statMatched: document.getElementById('statMatched'),
   statOutliers: document.getElementById('statOutliers'),
@@ -81,7 +63,6 @@ const ui = {
   backBtn: document.getElementById('backToUploadBtn'),
   runMeta: document.getElementById('runMeta'),
   
-  // Pagination & Filter Elements
   outliersSearch: document.getElementById('outliersSearch'),
   outliersTypeFilter: document.getElementById('outliersTypeFilter'),
   outliersPrev: document.getElementById('outliersPrev'),
@@ -89,22 +70,104 @@ const ui = {
   outliersPageInfo: document.getElementById('outliersPageInfo'),
 };
 
-// Event Listeners for File Selection
-ui.ordersFile.addEventListener('change', async (e) => {
-  if (e.target.files.length > 0) {
-    const file = e.target.files[0];
-    ui.ordersFileList.innerHTML = `<div class="dfn">${file.name} (${t("cod_toast_parsing", "Parsing...")})</div>`;
-    rootsFileObj = await parseFileForMapping(file, true);
-    ui.ordersFileList.innerHTML = `<div class="dfn">${file.name}</div>`;
-    ui.dropOrders.classList.add('loaded');
-  } else {
-    rootsFileObj = null;
-    ui.ordersFileList.innerHTML = '';
-    ui.dropOrders.classList.remove('loaded');
-  }
-  checkRunReady();
+// --- Fetching API Orders ---
+ui.fetchOrdersBtn.addEventListener('click', async () => {
+    if (!ui.startDate.value || !ui.endDate.value) {
+        alert("Please select both Start Date and End Date.");
+        return;
+    }
+
+    ui.fetchOrdersBtn.disabled = true;
+    ui.fetchOrdersBtn.textContent = 'Fetching...';
+    ui.fetchStatus.textContent = '';
+    apiOrders = [];
+    ui.previewContainer.style.display = 'none';
+    checkRunReady();
+
+    try {
+        const startTs = new Date(ui.startDate.value + 'T00:00:00Z').getTime();
+        const endTs = new Date(ui.endDate.value + 'T23:59:59Z').getTime();
+
+        const payload = {
+            data: {
+                startDate: ui.startDate.value,
+                endDate: ui.endDate.value,
+                startTimestamp: startTs,
+                endTimestamp: endTs,
+                sellers: ["SEM", "BAM"]
+            }
+        };
+
+        const url = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://127.0.0.1:5001/roots-weekly/us-central1/getCODOrders'
+            : 'https://us-central1-roots-weekly.cloudfunctions.net/getCODOrders';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`API returned status ${response.status}`);
+        }
+
+        const resData = await response.json();
+        const rawOrders = resData?.data?.orders || [];
+        
+        // Filter out non-COD if needed, but for now we map them
+        apiOrders = rawOrders.map(order => {
+            const tags = Array.isArray(order.tags) ? order.tags.join(', ') : (order.tags || '');
+            const note = order.note || '';
+            const remarks = order.shipment_details?.remarks || '';
+            
+            // Reconstruct the mapping object
+            return {
+                id: String(order.order_id || ''),
+                ref: String(order.order_alias || ''),
+                amt: parseFloat(order.invoice?.total_due || order.invoice?.total || 0),
+                fee: parseFloat(order.invoice?.shipping_price || 0),
+                date: order.order_created_at || '',
+                status: order.payment_method || 'POSTPAID',
+                courier: order.shipment_details?.courier_partner_name || order.shipment?.courier_partner?.name || '',
+                tags: tags,
+                note: note,
+                remarks: remarks,
+                originalOrder: order
+            };
+        });
+
+        ui.previewCount.textContent = apiOrders.length;
+        
+        ui.previewTableBody.innerHTML = apiOrders.map(o => `
+            <tr>
+                <td><b>${o.id}</b></td>
+                <td>${new Date(o.date).toLocaleDateString()}</td>
+                <td>${o.amt.toFixed(3)} JOD</td>
+                <td><span class="badge" style="background:#eee;color:#333;border:1px solid #ccc">${o.status}</span></td>
+                <td>${o.tags}</td>
+                <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${o.note}">${o.note}</td>
+                <td>${o.remarks}</td>
+            </tr>
+        `).join('');
+
+        ui.previewContainer.style.display = 'block';
+        ui.fetchStatus.textContent = `Successfully fetched ${apiOrders.length} orders.`;
+        ui.fetchStatus.style.color = "green";
+
+    } catch (e) {
+        console.error(e);
+        ui.fetchStatus.textContent = `Error fetching orders: ${e.message}`;
+        ui.fetchStatus.style.color = "red";
+    } finally {
+        ui.fetchOrdersBtn.disabled = false;
+        ui.fetchOrdersBtn.textContent = 'Fetch COD Orders';
+        checkRunReady();
+    }
 });
 
+
+// --- Upload Partner Files ---
 ui.partnersFiles.addEventListener('change', async (e) => {
   const files = Array.from(e.target.files);
   if (files.length > 0) {
@@ -123,7 +186,6 @@ ui.partnersFiles.addEventListener('change', async (e) => {
   checkRunReady();
 });
 
-// File Parser to extract headers and generic column indices
 async function parseFileForMapping(file, isRoots = false) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -136,7 +198,6 @@ async function parseFileForMapping(file, isRoots = false) {
         
         let headerRowIdx = 0;
         let maxStrCount = 0;
-        // Search top 25 rows to find the actual header row (the one with the most columns)
         for (let i = 0; i < Math.min(jsonArr.length, 25); i++) {
             if (jsonArr[i]) {
                 const strCount = jsonArr[i].filter(x => x !== undefined && x !== null && String(x).trim() !== '').length;
@@ -157,7 +218,6 @@ async function parseFileForMapping(file, isRoots = false) {
             columnOptions.push({ index: c, rawName: hName });
         }
 
-        // Intelligent backend auto-detection
         const mapping = { id: null, ref: null, amt: null, fee: null, date: null, status: null };
         const findCol = (kws) => {
              for(let kw of kws) {
@@ -167,22 +227,12 @@ async function parseFileForMapping(file, isRoots = false) {
              return null;
         };
 
-        if (isRoots) {
-            mapping.id = findCol(['order id', 'tracking', 'awb']);
-            mapping.ref = findCol(['reference', 'ref']);
-            mapping.amt = findCol(['collection amount', 'cod amount', 'order amount', 'total']);
-            mapping.fee = findCol(['delivery', 'shipping', 'fee']);
-            mapping.date = findCol(['date', 'created', 'delivery date', 'delivered at']);
-            mapping.status = findCol(['status', 'payment status', 'type']);
-            mapping.courier = findCol(['courier', 'delivered by', 'shipping account', 'partner']);
-        } else {
-            mapping.id = findCol(['order id', 'tracking', 'awb']);
-            mapping.ref = findCol(['reference', 'ref', 'client ref']);
-            mapping.amt = findCol(['net', 'due to merchant', 'due amount', 'duo amt', 'amount', 'cod', 'total', 'amt']);
-            mapping.fee = findCol(['delivery fee', 'shipping fee', 'fee', 'charge']);
-            mapping.date = findCol(['date', 'delivered at', 'delivery date']);
-            mapping.status = findCol(['payment status', 'status', 'type']);
-        }
+        mapping.id = findCol(['order id', 'tracking', 'awb']);
+        mapping.ref = findCol(['reference', 'ref', 'client ref']);
+        mapping.amt = findCol(['net', 'due to merchant', 'due amount', 'duo amt', 'amount', 'cod', 'total', 'amt']);
+        mapping.fee = findCol(['delivery fee', 'shipping fee', 'fee', 'charge']);
+        mapping.date = findCol(['date', 'delivered at', 'delivery date']);
+        mapping.status = findCol(['payment status', 'status', 'type']);
         
         if (mapping.amt !== null && headers[mapping.amt]) {
             const amtName = String(headers[mapping.amt]).toLowerCase();
@@ -191,13 +241,12 @@ async function parseFileForMapping(file, isRoots = false) {
             }
         }
 
-        // Fallbacks
         if (mapping.id === null && columnOptions.length > 0) mapping.id = 0;
         if (mapping.amt === null && columnOptions.length > 1) mapping.amt = 1;
 
         resolve({
           file: file,
-          dataObjects: actualData, // array of arrays
+          dataObjects: actualData,
           columnOptions: columnOptions,
           mapping: mapping
         });
@@ -211,19 +260,13 @@ async function parseFileForMapping(file, isRoots = false) {
 }
 
 function checkRunReady() {
-  let isReady = rootsFileObj != null && partnerFileObjs.length > 0;
-  
-  if (rootsFileObj) {
-      if (rootsFileObj.mapping.id == null || rootsFileObj.mapping.amt == null) isReady = false;
-  }
+  let isReady = apiOrders.length > 0 && partnerFileObjs.length > 0;
   for(let p of partnerFileObjs) {
       if (p.mapping.id == null || p.mapping.amt == null) isReady = false;
   }
-
   ui.runBtn.disabled = !isReady;
 }
 
-// Calculate numeric amount from a row given amtCol and feeCol
 function extractDetails(row, m) {
     let amt = 0;
     if (m.amt != null && row[m.amt] != null) {
@@ -244,7 +287,7 @@ function extractDetails(row, m) {
     return { amt, fee, net: amt - fee, date, status };
 }
 
-// Run Reconciliation
+// --- Run Reconciliation ---
 ui.runBtn.addEventListener('click', async () => {
   ui.runError.textContent = '';
   ui.runBtn.textContent = t("cod_toast_processing", "Processing...");
@@ -254,24 +297,24 @@ ui.runBtn.addEventListener('click', async () => {
     const rootsOrders = [];
     const rootsLookupMap = new Map();
 
-    rootsFileObj.dataObjects.forEach(row => {
-      const id = String(row[rootsFileObj.mapping.id] || '').trim();
-      const refId = String(row[rootsFileObj.mapping.ref] || '').trim();
-      let courier = '';
-      if(rootsFileObj.mapping.courier !== null && rootsFileObj.mapping.courier !== undefined) {
-          courier = String(row[rootsFileObj.mapping.courier] || '').trim();
-      }
-      
-      if (id || refId) {
-          const details = extractDetails(row, rootsFileObj.mapping);
-          details.rootsId = id;
-          details.rootsRef = refId;
-          details.courier = courier;
-          details.isMatched = false;
-          rootsOrders.push(details);
-          if (id) rootsLookupMap.set(id, details);
-          if (refId) rootsLookupMap.set(refId, details);
-      }
+    apiOrders.forEach(o => {
+      const details = {
+          rootsId: o.id,
+          rootsRef: o.ref,
+          amt: o.amt,
+          fee: o.fee,
+          net: o.amt - o.fee,
+          date: o.date,
+          status: o.status,
+          courier: o.courier,
+          tags: o.tags,
+          note: o.note,
+          remarks: o.remarks,
+          isMatched: false
+      };
+      rootsOrders.push(details);
+      if (o.id) rootsLookupMap.set(o.id, details);
+      if (o.ref) rootsLookupMap.set(o.ref, details);
     });
 
     const partnerOrders = [];
@@ -317,7 +360,9 @@ ui.runBtn.addEventListener('click', async () => {
               'ORDER DELIVERED AT': pInfo.date || matchedRoots.date || '',
               'PAYMENT STATUS': pInfo.status || matchedRoots.status || 'POSTPAID',
               'Courier': matchedRoots.courier || pInfo.fileName,
-              'NOTES': ''
+              'API Tags': matchedRoots.tags,
+              'API Remarks': matchedRoots.remarks,
+              'API Note': matchedRoots.note
             });
         } else {
             outliers.push({
@@ -336,7 +381,9 @@ ui.runBtn.addEventListener('click', async () => {
                'ORDER DELIVERED AT': pInfo.date || '',
                'PAYMENT STATUS': pInfo.status || '',
                'Courier': pInfo.fileName,
-               'NOTES': 'Not in Roots Orders'
+               'API Tags': '',
+               'API Remarks': '',
+               'API Note': ''
             });
         }
     });
@@ -360,14 +407,16 @@ ui.runBtn.addEventListener('click', async () => {
                   'ORDER DELIVERED AT': rInfo.date || '',
                   'PAYMENT STATUS': rInfo.status || 'POSTPAID',
                   'Courier': rInfo.courier || 'Private Driver',
-                  'NOTES': 'Auto-matched private driver'
+                  'API Tags': rInfo.tags,
+                  'API Remarks': rInfo.remarks,
+                  'API Note': rInfo.note
                 });
             } else {
                 outliers.push({
                   type: 'Missing in Partners',
                   id: rInfo.rootsId || rInfo.rootsRef,
                   amount: rInfo.net,
-                  source: 'Roots Orders'
+                  source: 'Roots Orders API'
                 });
                 finalReport.push({
                    'ORDER ID': rInfo.rootsId || rInfo.rootsRef,
@@ -379,7 +428,9 @@ ui.runBtn.addEventListener('click', async () => {
                    'ORDER DELIVERED AT': '',
                    'PAYMENT STATUS': rInfo.status || '',
                    'Courier': rInfo.courier || 'SkyNet/Click',
-                   'NOTES': 'Missing in Partners'
+                   'API Tags': rInfo.tags,
+                   'API Remarks': rInfo.remarks,
+                   'API Note': rInfo.note
                 });
             }
         }
@@ -391,10 +442,11 @@ ui.runBtn.addEventListener('click', async () => {
       totalCod: totalCodTransferred,
       matched: postpaidCount,
       timestamp: Date.now(),
-      isTransferred: false // Default new runs to pending
+      isTransferred: false
     };
 
-    await saveHistory(reconciliationResult);
+    // Note: We skip saveHistory for now or can implement it later
+    // await saveHistory(reconciliationResult);
     previousView = 'uploadView';
     showDashboard(reconciliationResult);
 
@@ -419,7 +471,6 @@ function showDashboard(res) {
   ui.statOutliers.textContent = res.outliers.length;
   ui.statPostpaid.textContent = res.matched; 
 
-  // Reset pagination
   currentPage = 1;
   currentMatchedPage = 1;
   if(ui.outliersSearch) ui.outliersSearch.value = '';
@@ -429,7 +480,6 @@ function showDashboard(res) {
   renderMatched();
 }
 
-// Pagination & Filtering Logic
 let currentMatchedPage = 1;
 
 function renderMatched() {
@@ -497,7 +547,6 @@ function renderOutliers() {
   `).join('');
 }
 
-// Event listeners for pagination and filters
 if (ui.outliersSearch) ui.outliersSearch.addEventListener('input', () => { currentPage = 1; renderOutliers(); });
 if (ui.outliersTypeFilter) ui.outliersTypeFilter.addEventListener('change', () => { currentPage = 1; renderOutliers(); });
 if (ui.outliersPrev) ui.outliersPrev.addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderOutliers(); } });
@@ -513,7 +562,6 @@ if (ui.matchedNext) ui.matchedNext.addEventListener('click', () => {
   if (currentMatchedPage < totalPages) { currentMatchedPage++; renderMatched(); } 
 });
 
-// View Toggles
 ui.viewHistoryBtn.addEventListener('click', () => {
   ui.uploadView.style.display = 'none';
   ui.dashboardView.style.display = 'none';
@@ -522,10 +570,9 @@ ui.viewHistoryBtn.addEventListener('click', () => {
 ui.backFromHistoryBtn.addEventListener('click', () => {
   ui.historyView.style.display = 'none';
   ui.dashboardView.style.display = 'none';
-  ui.uploadView.style.display = 'flex';
+  ui.uploadView.style.display = 'block'; // Or whatever display was default
 });
 
-// Download Current Excel
 ui.downloadBtn.addEventListener('click', async () => {
   if (!reconciliationResult) return;
   await generateExcelFile(reconciliationResult.report, reconciliationResult.outliers, new Date().toISOString().slice(0,10));
@@ -543,7 +590,6 @@ async function generateExcelFile(reportData, outliersData, dateStr) {
           wsReport.addRow(row);
       });
       
-      // Style header row
       const headerRow = wsReport.getRow(1);
       headerRow.eachCell((cell) => {
           cell.fill = {
@@ -583,192 +629,11 @@ async function generateExcelFile(reportData, outliersData, dateStr) {
   window.URL.revokeObjectURL(url);
 }
 
-// Back Button
 ui.backBtn.addEventListener('click', () => {
   ui.dashboardView.style.display = 'none';
   if (previousView === 'historyView') {
-      ui.historyView.style.display = 'block';
+    ui.historyView.style.display = 'block';
   } else {
-      ui.uploadView.style.display = 'flex';
+    ui.uploadView.style.display = 'block';
   }
-  
-  rootsFileObj = null;
-  partnerFileObjs = [];
-  ui.ordersFileList.innerHTML = '';
-  ui.partnersFileList.innerHTML = '';
-  ui.ordersFile.value = '';
-  ui.partnersFiles.value = '';
-  ui.dropOrders.classList.remove('loaded');
-  ui.dropPartners.classList.remove('loaded');
-  checkRunReady();
 });
-
-// Firebase History
-async function saveHistory(res) {
-  const runId = `COD-REC-${res.timestamp}`;
-  const histRef = ref(db, `roots_cod_dashboard/history_meta/${runId}`);
-  const dataRef = ref(db, `roots_cod_dashboard/history_data/${runId}`);
-  
-  await set(histRef, {
-    runId,
-    timestamp: res.timestamp,
-    totalCod: res.totalCod,
-    matched: res.matched,
-    outliersCount: res.outliers.length,
-    isTransferred: res.isTransferred || false
-  });
-  
-  await set(dataRef, {
-    reportJson: JSON.stringify(res.report),
-    outliersJson: JSON.stringify(res.outliers)
-  });
-}
-
-function loadHistory() {
-  const oldHistoryRef = ref(db, 'roots_cod_dashboard/history');
-  get(oldHistoryRef).then(async (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-          // Perform one-time migration to split data
-          for (let key in data) {
-              const run = data[key];
-              if (run.reportJson) {
-                  await set(ref(db, `roots_cod_dashboard/history_data/${key}`), {
-                      reportJson: run.reportJson,
-                      outliersJson: run.outliersJson
-                  });
-                  await set(ref(db, `roots_cod_dashboard/history_meta/${key}`), {
-                      runId: run.runId,
-                      timestamp: run.timestamp,
-                      totalCod: run.totalCod,
-                      matched: run.matched,
-                      outliersCount: run.outliersCount,
-                      isTransferred: run.isTransferred || false
-                  });
-                  await set(ref(db, `roots_cod_dashboard/history/${key}`), null); // delete old big node
-              }
-          }
-      }
-      
-      // Listen only to lightweight meta
-      const metaRef = ref(db, 'roots_cod_dashboard/history_meta');
-      onValue(metaRef, (metaSnap) => {
-        const metaData = metaSnap.val();
-        if (!metaData) {
-            if (ui.historyTableBody) ui.historyTableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px;">${t("cod_toast_no_runs", "No runs found")}</td></tr>`;
-            return;
-        }
-        
-        window.codHistoryData = metaData;
-        const runs = Object.values(metaData).sort((a, b) => b.timestamp - a.timestamp);
-        
-        if (ui.historyTableBody) {
-          ui.historyTableBody.innerHTML = runs.map(r => {
-            const isTransferred = r.isTransferred === true;
-            const statusHtml = isTransferred 
-              ? `<span class="badge bc" style="cursor:pointer;" onclick="toggleRunStatus('${r.runId}', true)" title="Click to mark Pending">${t("cod_transferred", "Transferred ✓")}</span>`
-              : `<span class="badge bo" style="cursor:pointer; background: #fff0eb; color: var(--orange);" onclick="toggleRunStatus('${r.runId}', false)" title="Click to mark Transferred">${t("cod_pending", "Pending")}</span>`;
-              
-            return `
-            <tr>
-              <td style="font-weight: 600; color: var(--orange);">${r.runId}</td>
-              <td>${new Date(r.timestamp).toLocaleString()}</td>
-              <td style="font-weight: 700;">${Number(r.totalCod).toFixed(3)} JOD</td>
-              <td>
-                 <span style="color: var(--green); font-weight: 600;">${r.matched}</span> / 
-                 <span style="color: var(--red); font-weight: 600;">${r.outliersCount}</span>
-              </td>
-              <td>${statusHtml}</td>
-              <td style="display: flex; gap: 5px;">
-                 <button class="pay-btn" style="background: var(--bg); color: var(--dark); border: 1px solid var(--bdr);" onclick="viewHistoryRun('${r.runId}', this)">${t("cod_btn_view", "View")}</button>
-                 <button class="pay-btn paid" onclick="downloadHistoryRun('${r.runId}', this)">${t("cod_btn_download", "Download")}</button>
-                 <button class="pay-btn" style="background: var(--rbg); color: var(--red); border: 1px solid #f5c2c7;" onclick="deleteHistoryRun('${r.runId}', this)">${t("cod_btn_delete", "Delete")}</button>
-              </td>
-            </tr>
-          `}).join('');
-        }
-      });
-  });
-}
-
-// Global function for the inline onclick handlers
-window.viewHistoryRun = async function(runId, btn) {
-    btn.textContent = '...';
-    btn.disabled = true;
-    try {
-        const dataRef = ref(db, `roots_cod_dashboard/history_data/${runId}`);
-        const snap = await get(dataRef);
-        const data = snap.val();
-        if (data) {
-            const report = JSON.parse(data.reportJson || '[]');
-            const outliers = JSON.parse(data.outliersJson || '[]');
-            const runInfo = window.codHistoryData[runId] || { timestamp: Date.now() };
-            
-            reconciliationResult = {
-                report: report,
-                outliers: outliers,
-                totalCod: runInfo.totalCod || 0,
-                matched: runInfo.matched || 0,
-                timestamp: runInfo.timestamp
-            };
-            
-            previousView = 'historyView';
-            showDashboard(reconciliationResult);
-        } else {
-            alert("No heavy data found for this run.");
-        }
-    } catch(e) {
-        alert("Error fetching historical data: " + e.message);
-    } finally {
-        btn.textContent = 'View';
-        btn.disabled = false;
-    }
-};
-
-window.downloadHistoryRun = function(runId, btn) {
-    if (!window.codHistoryData || !window.codHistoryData[runId]) return;
-    btn.textContent = '...';
-    get(ref(db, `roots_cod_dashboard/history_data/${runId}`)).then((snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-             const report = JSON.parse(data.reportJson);
-             const outliers = JSON.parse(data.outliersJson);
-             const ts = window.codHistoryData[runId].timestamp;
-             const d = new Date(ts).toISOString().slice(0,10);
-             generateExcelFile(report, outliers, d).finally(() => {
-                 btn.textContent = t("cod_btn_download", "Download");
-             });
-        }
-    }).catch(err => {
-        alert("Failed to download: " + err.message);
-        btn.textContent = t("cod_btn_download", "Download");
-    });
-}
-
-window.deleteHistoryRun = async function(runId, btn) {
-    if (!confirm(`Are you sure you want to permanently delete this COD run (${runId})?`)) return;
-    
-    btn.textContent = '...';
-    btn.disabled = true;
-    try {
-        await set(ref(db, `roots_cod_dashboard/history_meta/${runId}`), null);
-        await set(ref(db, `roots_cod_dashboard/history_data/${runId}`), null);
-    } catch (err) {
-        alert("Error deleting run: " + err.message);
-        btn.textContent = 'Delete';
-        btn.disabled = false;
-    }
-}
-
-window.toggleRunStatus = async function(runId, currentStatus) {
-    const newStatus = !currentStatus;
-    const histRef = ref(db, `roots_cod_dashboard/history_meta/${runId}`);
-    try {
-        await update(histRef, { isTransferred: newStatus });
-    } catch (e) {
-        alert("Failed to update status: " + e.message);
-    }
-};
-
-// Initialize
-loadHistory();

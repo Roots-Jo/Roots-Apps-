@@ -1,4 +1,4 @@
-// Redeploy trigger
+﻿// Redeploy trigger
 const functions = require("firebase-functions");
 const logger = require("firebase-functions/logger");
 const axios = require("axios");
@@ -11,7 +11,7 @@ const path = require('path');
 // IN PRODUCTION: Use Firebase Secret Manager for OMNIFUL_API_TOKEN.
 require("dotenv").config();
 
-exports.getOrders = functions.https.onRequest(async (req, res) => {
+exports.getOrders = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -25,8 +25,12 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    // The token from your python script. In a real app, this should be in Firebase Secrets.
-    const token = process.env.OMNIFUL_API_TOKEN || "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODg2OTU5NDgsImp0aSI6ImVhY2QxYjJkLTExYmYtNGZmZC04M2NhLTQzNGI0Y2Q5YzRhNiIsInVzZXJfZGV0YWlscyI6eyJUZW5hbnRDb2RlIjoiMzAyNjgyNTUzNCIsIlRlbmFudElEIjoiIiwiVXNlcklEIjoiMTQ0NDAiLCJVc2VyTmFtZSI6IkJhc2hhciIsIlJhdGVMaW1pdERldGFpbHMiOnsiRW5hYmxlZCI6dHJ1ZSwiUmVxdWVzdHNQZXJNaW51dGUiOjEyMH19LCJ0b2tlbl90eXBlIjoiQmVhcmVyIn0.ckEiC9UrSbidem6ITi6vR87yBbe3Ng1QBpruqY260OlK9R7WlvudfRmwn_8U-dnyjCXtI9z_nf99P9cdOIYbF5noLMi4krn_fvMzD6ZoRQfJxN-cdfbIh8X9QNYZY_-jYBNQFmKXF0DdKn-EDoTLEPvlk82re-cw_f0kuVdwqBwhmxPjU-GEkvN8JlSNxDSlfvsWc5BZgibIuZOfgsf5Zwy52egfMXpz5YzQ-FduN6VT4kqzKZuDgZajwGbtRB-SvJqlddJlcDK3ttsotiGLI0Gstoxnfa3xgnJGGGKpPXtHlI1HXqNlN5YWiOWsr2rK0ahhJwYp77Z7PeroLjUsyMAb3CAvUkalIx1EYKX07J9JgpkyYlFt1h3Dl_KqREiMAGGYJjgkS3ybpV9-8Qdxq6UjlmlBXDVglsYn4fqvF4GnJ0KZkT3xgF5XgHOiajJJqdw4BNbd4KqGIj39oiYhfujG7DbvUKmO1E7j_g_Tv3IZ4NgYXoF0u2ESykkEDMC5-y53ZGsRsxFOrC1r5_1zKTxLiyj6EZFSJIUUgfM8KaDg6Qd1SYAa8mxJcyLEnmFskydA4LLRBciiqcMCUKsMSNdvADBp2GEVCjLHvJ-E4dAEqvKNBCLDVvpyliLzCk3hA4sAs6TYpMKnOh6QBmD1-Sq77jHNr-YQEylrdiUY2pI";
+    const token = process.env.OMNIFUL_API_TOKEN;
+    if (!token) {
+      logger.error("Missing OMNIFUL_API_TOKEN environment variable.");
+      res.status(500).send({ data: { error: "Server Configuration Error" } });
+      return;
+    }
     const baseUrl = "https://prodapi.omniful.com";
     const sellerCodes = sellers && sellers.length > 0 ? sellers : ["SEM", "BAM"];
     const headers = {
@@ -39,16 +43,19 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
     try {
       for (const sellerCode of sellerCodes) {
         logger.info(`Fetching orders for seller: ${sellerCode}`);
-        const endpoint = `/sales-channel/public/v1/tenants/sellers/${sellerCode}/orders`;
+        const endpoint = `/sales-channel/public/v2/tenants/sellers/${sellerCode}/orders`;
         const fullUrl = `${baseUrl}${endpoint}`;
 
-        let page = 1;
+        let searchAfter = null;
+        let pageCount = 1; // Used for logging purposes
 
         while (true) {
           const queryParams = {
-            page: page.toString(),
             per_page: "100"
           };
+          if (searchAfter) {
+            queryParams.search_after = searchAfter;
+          }
 
           const response = await axios.get(fullUrl, { headers, params: queryParams, timeout: 10000 });
           const orderData = response.data;
@@ -84,14 +91,28 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
           }
 
           allOrders.push(...validOrders);
-          logger.info(`Fetched page ${page} (${validOrders.length} valid orders) for ${sellerCode}`);
+          logger.info(`Fetched page ${pageCount} (${validOrders.length} valid orders) for ${sellerCode}`);
 
           if (stopFetching) {
             logger.info(`Encountered orders older than ${startDate}. Stopping fetch for ${sellerCode}.`);
             break;
           }
 
-          page++;
+          // Extract the next cursor
+          if (orderData.meta) {
+            searchAfter = orderData.meta.search_after || orderData.meta.next_cursor || orderData.meta.cursor;
+          } else if (pageOrders.length > 0) {
+            // Fallback: if meta is null, some APIs use the last order's ID as the cursor
+            searchAfter = pageOrders[pageOrders.length - 1].id;
+          } else {
+            searchAfter = null;
+          }
+
+          if (!searchAfter) {
+            break;
+          }
+
+          pageCount++;
         }
       }
 
@@ -108,14 +129,19 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.getSellers = functions.https.onRequest(async (req, res) => {
+exports.getSellers = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "GET" && req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
       return;
     }
 
-    const token = process.env.OMNIFUL_API_TOKEN || "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODg2OTU5NDgsImp0aSI6ImVhY2QxYjJkLTExYmYtNGZmZC04M2NhLTQzNGI0Y2Q5YzRhNiIsInVzZXJfZGV0YWlscyI6eyJUZW5hbnRDb2RlIjoiMzAyNjgyNTUzNCIsIlRlbmFudElEIjoiIiwiVXNlcklEIjoiMTQ0NDAiLCJVc2VyTmFtZSI6IkJhc2hhciIsIlJhdGVMaW1pdERldGFpbHMiOnsiRW5hYmxlZCI6dHJ1ZSwiUmVxdWVzdHNQZXJNaW51dGUiOjEyMH19LCJ0b2tlbl90eXBlIjoiQmVhcmVyIn0.ckEiC9UrSbidem6ITi6vR87yBbe3Ng1QBpruqY260OlK9R7WlvudfRmwn_8U-dnyjCXtI9z_nf99P9cdOIYbF5noLMi4krn_fvMzD6ZoRQfJxN-cdfbIh8X9QNYZY_-jYBNQFmKXF0DdKn-EDoTLEPvlk82re-cw_f0kuVdwqBwhmxPjU-GEkvN8JlSNxDSlfvsWc5BZgibIuZOfgsf5Zwy52egfMXpz5YzQ-FduN6VT4kqzKZuDgZajwGbtRB-SvJqlddJlcDK3ttsotiGLI0Gstoxnfa3xgnJGGGKpPXtHlI1HXqNlN5YWiOWsr2rK0ahhJwYp77Z7PeroLjUsyMAb3CAvUkalIx1EYKX07J9JgpkyYlFt1h3Dl_KqREiMAGGYJjgkS3ybpV9-8Qdxq6UjlmlBXDVglsYn4fqvF4GnJ0KZkT3xgF5XgHOiajJJqdw4BNbd4KqGIj39oiYhfujG7DbvUKmO1E7j_g_Tv3IZ4NgYXoF0u2ESykkEDMC5-y53ZGsRsxFOrC1r5_1zKTxLiyj6EZFSJIUUgfM8KaDg6Qd1SYAa8mxJcyLEnmFskydA4LLRBciiqcMCUKsMSNdvADBp2GEVCjLHvJ-E4dAEqvKNBCLDVvpyliLzCk3hA4sAs6TYpMKnOh6QBmD1-Sq77jHNr-YQEylrdiUY2pI";
+    const token = process.env.OMNIFUL_API_TOKEN;
+    if (!token) {
+      logger.error("Missing OMNIFUL_API_TOKEN environment variable.");
+      res.status(500).send({ data: { error: "Server Configuration Error" } });
+      return;
+    }
     const baseUrl = "https://prodapi.omniful.com";
     const endpoint = "/sales-channel/public/v1/tenants/sellers";
 
@@ -142,7 +168,7 @@ exports.getSellers = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.saveMapping = functions.https.onRequest(async (req, res) => {
+exports.saveMapping = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -187,7 +213,7 @@ exports.saveMapping = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.updateMappings = functions.https.onRequest(async (req, res) => {
+exports.updateMappings = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -216,7 +242,7 @@ exports.updateMappings = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.saveDeliveries = functions.https.onRequest(async (req, res) => {
+exports.saveDeliveries = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -260,7 +286,7 @@ exports.saveDeliveries = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.updateDeliveries = functions.https.onRequest(async (req, res) => {
+exports.updateDeliveries = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -292,7 +318,7 @@ exports.updateDeliveries = functions.https.onRequest(async (req, res) => {
   });
 });
 
-exports.updateStatuses = functions.https.onRequest(async (req, res) => {
+exports.updateStatuses = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
     if (req.method !== "POST") {
       res.status(405).send("Method Not Allowed");
@@ -315,3 +341,140 @@ exports.updateStatuses = functions.https.onRequest(async (req, res) => {
     }
   });
 });
+exports.getCODOrders = functions.runWith({ secrets: ["OMNIFUL_API_TOKEN"] }).https.onRequest(async (req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    const { startDate, endDate, startTimestamp, endTimestamp, sellers } = req.body.data || {};
+
+    if (!startDate || !endDate || !startTimestamp || !endTimestamp) {
+      res.status(400).send({ data: { error: "startDate, endDate, and timestamps are required." } });
+      return;
+    }
+
+    const token = process.env.OMNIFUL_API_TOKEN;
+    if (!token) {
+      logger.error("Missing OMNIFUL_API_TOKEN environment variable.");
+      res.status(500).send({ data: { error: "Server Configuration Error" } });
+      return;
+    }
+    const baseUrl = "https://prodapi.omniful.com";
+    const sellerCodes = sellers && sellers.length > 0 ? sellers : ["SEM", "BAM"];
+    const headers = {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    };
+
+    let allOrders = [];
+
+    try {
+      // 1. Fetch Orders (Duplicate of getOrders logic but optimized)
+      for (const sellerCode of sellerCodes) {
+        logger.info(`Fetching COD orders for seller: ${sellerCode}`);
+        const endpoint = `/sales-channel/public/v2/tenants/sellers/${sellerCode}/orders`;
+        const fullUrl = `${baseUrl}${endpoint}`;
+
+        let searchAfter = null;
+        while (true) {
+          const queryParams = { per_page: "100" };
+          if (searchAfter) queryParams.search_after = searchAfter;
+
+          const response = await axios.get(fullUrl, { headers, params: queryParams, timeout: 15000 });
+          const orderData = response.data;
+          const pageOrders = orderData.data || [];
+
+          if (pageOrders.length === 0) break;
+
+          let validOrders = [];
+          let stopFetching = false;
+
+          for (const order of pageOrders) {
+            let createdAt = order.order_created_at || "";
+            if (createdAt && !createdAt.includes('T')) createdAt = createdAt.replace(' ', 'T');
+            if (createdAt && !createdAt.endsWith('Z') && !createdAt.includes('+')) createdAt += '+03:00';
+            const orderTimestamp = new Date(createdAt).getTime();
+
+            if (orderTimestamp >= startTimestamp && orderTimestamp <= endTimestamp) {
+              validOrders.push(order);
+            } else if (orderTimestamp < startTimestamp) {
+              stopFetching = true;
+            }
+          }
+
+          allOrders.push(...validOrders);
+          if (stopFetching) break;
+
+          if (orderData.meta) {
+            searchAfter = orderData.meta.search_after || orderData.meta.next_cursor || orderData.meta.cursor;
+          } else if (pageOrders.length > 0) {
+            searchAfter = pageOrders[pageOrders.length - 1].id;
+          } else {
+            searchAfter = null;
+          }
+
+          if (!searchAfter) break;
+        }
+      }
+
+      // 2. Fetch Shipments for the Date Range
+      let allShipments = [];
+      let shipmentPage = 1;
+      const fromDate = new Date(startTimestamp).toISOString();
+      // Add one day to toDate to ensure we cover the whole day because of timezone differences
+      const toDate = new Date(endTimestamp + 86400000).toISOString(); 
+      
+      const shipmentEndpoint = "/fulfillment/public/v2/tenants/shipments";
+      
+      while (true) {
+         const shipmentParams = {
+            from_date: fromDate,
+            to_date: toDate,
+            page: shipmentPage,
+            limit: 100
+         };
+         logger.info(`Fetching shipments page ${shipmentPage}`);
+         const shipResponse = await axios.get(`${baseUrl}${shipmentEndpoint}`, { headers, params: shipmentParams, timeout: 15000 });
+         const shipData = shipResponse.data;
+         const pageShipments = shipData.data || [];
+         
+         if (pageShipments.length > 0) {
+            allShipments.push(...pageShipments);
+         }
+         
+         if (pageShipments.length < 100) {
+            break; // Last page
+         }
+         shipmentPage++;
+      }
+      
+      // 3. Combine Orders and Shipments
+      const shipmentsByOrderAlias = {};
+      for (const ship of allShipments) {
+         if (ship.order_alias) shipmentsByOrderAlias[ship.order_alias] = ship;
+         if (ship.order_id) shipmentsByOrderAlias[ship.order_id] = ship;
+      }
+      
+      for (let i = 0; i < allOrders.length; i++) {
+         const o = allOrders[i];
+         const ship = shipmentsByOrderAlias[o.order_alias] || shipmentsByOrderAlias[o.order_id] || shipmentsByOrderAlias[o.id];
+         if (ship) {
+             o.shipment_details = ship; // includes remarks, etc.
+         }
+      }
+
+      logger.info(`Successfully fetched combined COD data for ${allOrders.length} orders`);
+      res.status(200).send({ data: { orders: allOrders } });
+
+    } catch (error) {
+      logger.error("Error fetching COD orders", error.message);
+      if (error.response) {
+        logger.error("Server Response", error.response.data);
+      }
+      res.status(500).send({ data: { error: "Failed to fetch COD orders from the external API." } });
+    }
+  });
+});
+
