@@ -127,6 +127,14 @@
                                      {
                                          "function":  "updateStatuses",
                                          "source":  "/updateStatuses"
+                                     },
+                                     {
+                                         "function":  "getCODOrders",
+                                         "source":  "/fetchCODOrders"
+                                     },
+                                     {
+                                         "function":  "syncCODOrders",
+                                         "source":  "/syncCODOrders"
                                      }
                                  ],
                     "cleanUrls":  true,

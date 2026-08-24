@@ -59,6 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const neighborhoodArInput = document.getElementById('neighborhood-ar');
 
     let currentView = 'raw';
+    let currentPage = 1;
+    let pageSize = 20;
     let baseMappings = [];
     let customMappings = JSON.parse(localStorage.getItem('customMappings')) || [];
     let outsideAmmanList = JSON.parse(localStorage.getItem('outsideAmmanList')) || [];
@@ -448,24 +450,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initialize toggle icon
-    if (document.documentElement.getAttribute('data-theme') === 'dark') {
-        themeToggle.textContent = '☀️';
-    } else {
-        themeToggle.textContent = '🌙';
-    }
-
-    themeToggle.addEventListener('click', () => {
+    // Initialize toggle icon (if present)
+    if (themeToggle) {
         if (document.documentElement.getAttribute('data-theme') === 'dark') {
-            document.documentElement.removeAttribute('data-theme');
-            localStorage.setItem('theme', 'light');
-            themeToggle.textContent = '🌙';
-        } else {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
             themeToggle.textContent = '☀️';
+        } else {
+            themeToggle.textContent = '🌙';
         }
-    });
+
+        themeToggle.addEventListener('click', () => {
+            if (document.documentElement.getAttribute('data-theme') === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                themeToggle.textContent = '🌙';
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                themeToggle.textContent = '☀️';
+            }
+        });
+    }
 
     const sellersContainer = document.getElementById('sellers-container');
     let allSellersData = [];
@@ -576,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tableContainer.classList.add('hidden');
         exportBtn.classList.add('hidden');
         emptyState.classList.remove('hidden');
+        renderPagination(0);
 
         try {
             const targetUrl = '/fetchOrders';
@@ -629,9 +634,31 @@ document.addEventListener('DOMContentLoaded', () => {
                         order.order_created_at = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
                     }
                 }
+
+                const delAt = order.shipment?.order_delivered_at || order.order_delivered_at || order.shipment?.delivered_at;
+                if (delAt) {
+                    let rawDel = delAt;
+                    if (!rawDel.includes('T')) rawDel = rawDel.replace(' ', 'T');
+                    if (!rawDel.endsWith('Z') && !rawDel.includes('+')) rawDel += '+03:00';
+                    const delObj = new Date(rawDel);
+                    if (!isNaN(delObj.getTime())) {
+                        const year = delObj.getFullYear();
+                        const month = String(delObj.getMonth() + 1).padStart(2, '0');
+                        const day = String(delObj.getDate()).padStart(2, '0');
+                        const hours = String(delObj.getHours()).padStart(2, '0');
+                        const minutes = String(delObj.getMinutes()).padStart(2, '0');
+                        const seconds = String(delObj.getSeconds()).padStart(2, '0');
+                        if (order.shipment) {
+                            order.shipment.order_delivered_at = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                        } else {
+                            order.order_delivered_at = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                        }
+                    }
+                }
             });
 
             fetchedOrders = orders;
+            currentPage = 1;
 
             // Render to HTML Table
             renderTable(fetchedOrders);
@@ -690,24 +717,133 @@ document.addEventListener('DOMContentLoaded', () => {
         return { area: 'Under Review', areaAr: '', keyword: '', neighborhood: '', neighborhoodAr: '' };
     }
 
+    function renderPagination(totalCount) {
+        const topBar = document.getElementById('pagination-bar-top');
+        const bottomBar = document.getElementById('pagination-bar-bottom');
+
+        if (!topBar && !bottomBar) return;
+
+        if (!totalCount || totalCount === 0) {
+            if (topBar) { topBar.innerHTML = ''; topBar.classList.add('hidden'); }
+            if (bottomBar) { bottomBar.innerHTML = ''; bottomBar.classList.add('hidden'); }
+            return;
+        }
+
+        const effectivePageSize = pageSize === 'all' ? totalCount : parseInt(pageSize, 10);
+        const totalPages = Math.max(1, Math.ceil(totalCount / effectivePageSize));
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startItem = totalCount === 0 ? 0 : (currentPage - 1) * effectivePageSize + 1;
+        const endItem = pageSize === 'all' ? totalCount : Math.min(currentPage * effectivePageSize, totalCount);
+
+        const barHtml = `
+            <div class="pagination-left">
+                <span class="pagination-info">Showing <strong>${startItem} - ${endItem}</strong> of <strong>${totalCount}</strong> orders</span>
+            </div>
+            <div class="pagination-right">
+                <div class="pagination-size-wrapper">
+                    <label>Rows:</label>
+                    <select class="pagination-size-select">
+                        <option value="20" ${pageSize == 20 ? 'selected' : ''}>20</option>
+                        <option value="50" ${pageSize == 50 ? 'selected' : ''}>50</option>
+                        <option value="100" ${pageSize == 100 ? 'selected' : ''}>100</option>
+                        <option value="all" ${pageSize === 'all' ? 'selected' : ''}>All</option>
+                    </select>
+                </div>
+                <div class="pagination-nav">
+                    <button class="pagination-btn first-btn" ${currentPage === 1 ? 'disabled' : ''} title="First Page">«</button>
+                    <button class="pagination-btn prev-btn" ${currentPage === 1 ? 'disabled' : ''} title="Previous Page">‹</button>
+                    <span class="pagination-page-indicator">Page ${currentPage} of ${totalPages}</span>
+                    <button class="pagination-btn next-btn" ${currentPage === totalPages ? 'disabled' : ''} title="Next Page">›</button>
+                    <button class="pagination-btn last-btn" ${currentPage === totalPages ? 'disabled' : ''} title="Last Page">»</button>
+                </div>
+            </div>
+        `;
+
+        [topBar, bottomBar].forEach(bar => {
+            if (!bar) return;
+            bar.innerHTML = barHtml;
+            bar.classList.remove('hidden');
+
+            const sizeSelect = bar.querySelector('.pagination-size-select');
+            sizeSelect?.addEventListener('change', (e) => {
+                pageSize = e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10);
+                currentPage = 1;
+                renderTable(fetchedOrders);
+            });
+
+            const firstBtn = bar.querySelector('.first-btn');
+            firstBtn?.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage = 1;
+                    renderTable(fetchedOrders);
+                }
+            });
+
+            const prevBtn = bar.querySelector('.prev-btn');
+            prevBtn?.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable(fetchedOrders);
+                }
+            });
+
+            const nextBtn = bar.querySelector('.next-btn');
+            nextBtn?.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable(fetchedOrders);
+                }
+            });
+
+            const lastBtn = bar.querySelector('.last-btn');
+            lastBtn?.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage = totalPages;
+                    renderTable(fetchedOrders);
+                }
+            });
+        });
+    }
+
     function renderTable(ordersArray) {
-        const flattenedOrders = ordersArray.map(order => flattenObject(order));
+        if (!ordersArray || ordersArray.length === 0) {
+            tableBody.innerHTML = '';
+            renderPagination(0);
+            return;
+        }
+
+        const totalCount = ordersArray.length;
+        const effectivePageSize = pageSize === 'all' ? totalCount : parseInt(pageSize, 10);
+        const totalPages = Math.max(1, Math.ceil(totalCount / effectivePageSize));
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * effectivePageSize;
+        const endIndex = pageSize === 'all' ? totalCount : Math.min(startIndex + effectivePageSize, totalCount);
+
+        const pageSlice = ordersArray.slice(startIndex, endIndex);
+        const flattenedPageOrders = pageSlice.map(order => flattenObject(order));
 
         if (currentView === 'raw') {
             const headersSet = new Set();
-            flattenedOrders.forEach(order => {
-                Object.keys(order).forEach(key => headersSet.add(key));
+            ordersArray.forEach(order => {
+                const flat = flattenObject(order);
+                Object.keys(flat).forEach(key => headersSet.add(key));
             });
 
             let headers = Array.from(headersSet).sort();
-            const priorityCols = ["order_id", "billing_address_city", "billing_address_address1"];
+            const priorityCols = ["order_id", "order_created_at", "shipment_order_delivered_at", "billing_address_city", "billing_address_address1"];
             headers = headers.filter(h => !priorityCols.includes(h));
             headers = [...priorityCols, ...headers];
 
             tableHead.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
 
             let bodyHtml = '';
-            flattenedOrders.forEach(order => {
+            flattenedPageOrders.forEach(order => {
                 bodyHtml += '<tr>';
                 headers.forEach(header => {
                     let cellValue = order[header] !== undefined && order[header] !== null ? order[header] : '';
@@ -722,6 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const headers = [
                 "order_id",
                 "order_created_at",
+                "shipment_order_delivered_at",
                 "customer_first_name",
                 "customer_last_name",
                 "billing_address_city",
@@ -741,7 +878,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tableHead.innerHTML = headers.map(h => `<th>${h}</th>`).join('') + '<th>Action</th>';
 
             let bodyHtml = '';
-            flattenedOrders.forEach((order, index) => {
+            flattenedPageOrders.forEach((order, pageIdx) => {
+                const originalIndex = startIndex + pageIdx;
                 const city = order.billing_address_city || '';
                 const addr = order.billing_address_address1 || '';
                 const mapped = mapOrderToArea(city, addr);
@@ -778,9 +916,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (area === 'Under Review') {
                     bodyHtml += `<td style="display: flex; gap: 8px;">
-                        <button class="review-btn run-btn" data-index="${index}" style="padding: 4px 8px; font-size: 11px; margin: 0; min-width: auto; height: 28px;">Add to Master Sheet</button>
-                        <button class="outside-btn" data-index="${index}" style="padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit; margin: 0; min-width: auto; height: 28px; border: none; border-radius: 4px; background: var(--red); color: var(--white); cursor: pointer; box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35); transition: all 0.15s;">Outside Amman</button>
-                        <button class="ignore-btn" data-index="${index}" style="padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit; margin: 0; min-width: auto; height: 28px; border: 1px solid var(--bdr); border-radius: 4px; background: var(--bg); color: var(--muted); cursor: pointer; transition: all 0.15s;">Ignore</button>
+                        <button class="review-btn run-btn" data-index="${originalIndex}" style="padding: 4px 8px; font-size: 11px; margin: 0; min-width: auto; height: 28px;">Add to Master Sheet</button>
+                        <button class="outside-btn" data-index="${originalIndex}" style="padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit; margin: 0; min-width: auto; height: 28px; border: none; border-radius: 4px; background: var(--red); color: var(--white); cursor: pointer; box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35); transition: all 0.15s;">Outside Amman</button>
+                        <button class="ignore-btn" data-index="${originalIndex}" style="padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit; margin: 0; min-width: auto; height: 28px; border: 1px solid var(--bdr); border-radius: 4px; background: var(--bg); color: var(--muted); cursor: pointer; transition: all 0.15s;">Ignore</button>
                     </td>`;
                 } else {
                     const escKw = (mapped.keyword || '').replace(/"/g, '&quot;');
@@ -789,7 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const escNeighborhood = (mapped.neighborhood || '').replace(/"/g, '&quot;');
                     const escNeighborhoodAr = (mapped.neighborhoodAr || '').replace(/"/g, '&quot;');
                     bodyHtml += `<td>
-                        <button class="edit-mapping-btn" data-index="${index}" data-keyword="${escKw}" data-area="${escArea}" data-area-ar="${escAreaAr}" data-neighborhood="${escNeighborhood}" data-neighborhood-ar="${escNeighborhoodAr}" style="padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit; margin: 0; min-width: auto; height: 28px; border: 1px solid var(--orange); border-radius: 4px; background: transparent; color: var(--orange); cursor: pointer; transition: all 0.15s;">Edit</button>
+                        <button class="edit-mapping-btn" data-index="${originalIndex}" data-keyword="${escKw}" data-area="${escArea}" data-area-ar="${escAreaAr}" data-neighborhood="${escNeighborhood}" data-neighborhood-ar="${escNeighborhoodAr}" style="padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit; margin: 0; min-width: auto; height: 28px; border: 1px solid var(--orange); border-radius: 4px; background: transparent; color: var(--orange); cursor: pointer; transition: all 0.15s;">Edit</button>
                     </td>`;
                 }
 
@@ -797,6 +935,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             tableBody.innerHTML = bodyHtml;
         }
+
+        renderPagination(totalCount);
     }
 
     function setLoadingState(isLoading) {

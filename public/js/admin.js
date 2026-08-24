@@ -49,14 +49,16 @@ function renderUsers() {
           </button>
         </div>
 
-        <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light);">
-          <div style="font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 6px;">${t("admin_lbl_password", "Password")}</div>
-          <div style="display: flex; gap: 8px;">
-            <input type="password" id="pass-${username}" value="${data.password || ''}" style="flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 13px; background: var(--bg);">
-            <button class="btn-outline" style="padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--muted);" onclick="toggleViewPassword('pass-${username}')" title="Toggle Visibility">
-              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-            </button>
-            <button class="btn-primary" style="padding: 6px 12px; margin: 0; width: auto; font-size: 12px; border-radius: 6px;" onclick="updatePassword('${username}')">${t("admin_btn_save", "Save")}</button>
+        <div class="user-password-section">
+          <label class="user-section-label">${t("admin_lbl_password", "Password")}</label>
+          <div class="password-input-group">
+            <div class="password-field-wrapper">
+              <input type="password" id="pass-${username}" value="${data.password || ''}" class="password-input">
+              <button class="toggle-password-btn" onclick="toggleViewPassword('pass-${username}')" title="Toggle Visibility">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              </button>
+            </div>
+            <button class="btn-save-password" onclick="updatePassword('${username}')">${t("admin_btn_save", "Save")}</button>
           </div>
         </div>
         

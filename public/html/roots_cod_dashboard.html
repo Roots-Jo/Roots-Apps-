@@ -3,297 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title data-i18n="cod_title">Roots COD Reconciliation</title>
+<title data-i18n="cod_title">Roots COD Orders</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/roots_cod_dashboard.css">
+<link rel="stylesheet" href="/css/index.css?v=2.0.1">
 <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
+<link rel="stylesheet" href="../css/orders.css?v=2.1.1">
 <script type="module" src="/js/auth.js"></script>
 <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="/js/arabic.js?v=2"></script>
-<style>
-  .fetch-section {
-    background: var(--bg);
-    border: 1px solid var(--bdr);
-    border-radius: 12px;
-    padding: 20px;
-    margin: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    align-items: flex-end;
-  }
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .form-group label {
-    font-size: 13px;
-    font-weight: 600;
-  }
-  .form-group input {
-    padding: 10px;
-    border: 1px solid var(--bdr);
-    border-radius: 8px;
-    background: var(--bg-hover);
-    color: var(--dark);
-  }
-  .hbtn.fetch {
-    padding: 10px 20px;
-    background: var(--primary);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .hbtn.fetch:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  .preview-table-container {
-    margin: 20px;
-    background: var(--bg);
-    border: 1px solid var(--bdr);
-    border-radius: 12px;
-    padding: 20px;
-    display: none;
-  }
-  .preview-table-container h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-  }
-  .table-wrapper {
-    max-height: 400px;
-    overflow-y: auto;
-  }
-  table.preview-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  table.preview-table th, table.preview-table td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid var(--bdr);
-    font-size: 13px;
-  }
-  table.preview-table th {
-    position: sticky;
-    top: 0;
-    background: var(--bg);
-    font-weight: 600;
-    color: var(--muted);
-  }
-</style>
 </head>
 <body>
 
   <div id="navbar"></div>
   <script src="/js/navbar.js?v=1.0.7"></script>
 
-  <!-- Upload & Fetch View -->
-  <div id="uploadView">
-    <div class="upload-hero">
-      <h1 data-i18n="cod_hero_title">COD <span>Reconciliation</span></h1>
-      <p data-i18n="cod_hero_sub">Fetch Live Orders and Upload Shipping Partner sheets to reconcile</p>
-      <button class="hbtn" id="viewHistoryBtn" style="margin-top: 15px; background: var(--bg); color: var(--dark); border: 1px solid var(--bdr);" data-i18n="cod_btn_history">View Past Reconciliations</button>
-    </div>
-
-    <!-- Fetch Orders API -->
-    <div class="fetch-section">
-      <div class="form-group">
-        <label>Start Date</label>
-        <input type="date" id="startDate">
+  <nav class="orders-nav" style="width: 100%; border-bottom: 1px solid var(--border); margin-bottom: 0; background: var(--bg);">
+      <div class="nav-content" style="display: flex; justify-content: center; padding: 0 20px;">
+          <div class="nav-links" style="display: flex; gap: 2rem; padding-top: 10px;">
+              <a href="/roots_cod_dashboard" class="nav-link" style="color: var(--orange); font-weight: 600; text-decoration: none; border-bottom: 3px solid var(--orange); padding-bottom: 4px;">COD Orders</a>
+          </div>
       </div>
-      <div class="form-group">
-        <label>End Date</label>
-        <input type="date" id="endDate">
-      </div>
-      <button class="hbtn fetch" id="fetchOrdersBtn">Fetch COD Orders</button>
-      <div id="fetchStatus" style="font-size: 13px; color: var(--muted); margin-left: auto;"></div>
-    </div>
+  </nav>
 
-    <!-- Preview Fetched Orders -->
-    <div class="preview-table-container" id="previewContainer">
-      <h3>API Orders Preview (<span id="previewCount">0</span>)</h3>
-      <div class="table-wrapper">
-        <table class="preview-table">
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Date</th>
-              <th>Net Amount</th>
-              <th>Status</th>
-              <th>Tags</th>
-              <th>Order Remarks (Note)</th>
-              <th>Shipment Remarks</th>
-            </tr>
-          </thead>
-          <tbody id="previewTableBody">
-            <!-- Populated by JS -->
-          </tbody>
-        </table>
-      </div>
-    </div>
+  <div class="container">
+      <main class="page-card">
+          <!-- Admin Manual Sync Panel (Visible only to Admins) -->
+          <div id="admin-fetch-container" class="hidden" style="margin-bottom: 1.5rem; background: var(--hover-bg, #fdfaf8); border: 1px solid var(--bdr); border-radius: 8px; padding: 12px 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                  <span style="font-size: 13px; font-weight: 700; color: var(--orange);">⚡ Admin Sync / Backfill COD Orders</span>
+                  <span style="font-size: 11px; color: var(--muted);">Manual sync updates the database immediately</span>
+              </div>
+              <form id="fetch-form">
+                  <div class="controls-bar" style="margin-bottom: 0;">
+                      <div class="controls-left">
+                          <div class="input-group">
+                              <label class="section-label">Select Sellers</label>
+                              <div class="custom-dropdown" id="sellers-dropdown">
+                                  <div class="sbox dropdown-toggle" id="sellers-toggle">
+                                      <span id="sellers-toggle-text">Loading...</span>
+                                      <span class="arrow">▼</span>
+                                  </div>
+                                  <div class="checkbox-container" id="sellers-container">
+                                      <div class="loader-small"></div> <span class="muted-text">Loading sellers...</span>
+                                  </div>
+                              </div>
+                          </div>
 
-    <div class="ugrid">
-      <div class="drop-card" id="dropPartners">
-        <div class="di">🚚</div>
-        <div class="dsrc" data-i18n="cod_lbl_partners">PARTNERS</div>
-        <div class="dlbl" data-i18n="cod_hint_partners">Drop Shipping Partner Excel(s) here</div>
-        <div class="dhint" data-i18n="cod_hint_browse_multi">or click to browse (multiple allowed)</div>
-        <input type="file" id="partnersFiles" multiple accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
-        <div class="dfiles" id="partnersFileList"></div>
-      </div>
-    </div>
+                          <div class="input-group">
+                              <label for="start-date" class="section-label">Start Date</label>
+                              <input type="date" id="start-date" class="sbox" required>
+                          </div>
+                          
+                          <div class="input-group">
+                              <label for="end-date" class="section-label">End Date</label>
+                              <input type="date" id="end-date" class="sbox" required>
+                          </div>
+                      </div>
 
-    <button class="run-btn" id="runReconciliationBtn" disabled data-i18n="cod_btn_run">Run Reconciliation</button>
-    <div class="run-err" id="runError"></div>
+                      <div class="controls-right">
+                          <button type="submit" id="fetch-btn" class="run-btn">
+                              <span class="btn-text">Sync Date Range</span>
+                              <div class="loader hidden" id="btn-loader"></div>
+                          </button>
+                      </div>
+                  </div>
+              </form>
+          </div>
+          
+          <div id="status-message" class="status-message hidden badge"></div>
+
+          <div id="empty-state" class="empty-state">
+              <div class="empty-icon">📦</div>
+              <h3 id="empty-state-title">Loading COD Orders...</h3>
+              <p id="empty-state-text">Fetching saved orders from the database.</p>
+          </div>
+
+          <!-- Delivered Orders Summary Table -->
+          <div id="summary-section" class="hidden" style="margin-top: 1rem; margin-bottom: 2.5rem;">
+              <div class="table-section-title">
+                  <div class="section-title-left">
+                      <span>Delivered Orders Summary</span>
+                      <span id="delivered-badge" class="table-section-badge">0 Delivered</span>
+                  </div>
+                  <div class="section-title-right" style="display: flex; gap: 0.75rem; align-items: center;">
+                      <button type="button" id="export-btn" class="export-btn hidden" style="padding: 6px 14px; font-size: 12px;">
+                          <span>Export to Excel</span>
+                      </button>
+                      <button type="button" id="btn-toggle-all-collapse" class="btn-toggle-collapse">
+                          <span id="collapse-all-icon">▼</span>
+                          <span id="collapse-all-text">Collapse All</span>
+                      </button>
+                  </div>
+              </div>
+
+              <!-- Summary Filters Bar -->
+              <div class="summary-filters-bar" id="summary-filters-bar">
+                  <div class="summary-filters-left">
+                      <div class="filter-item">
+                          <label for="filter-summary-date" class="filter-label">Date</label>
+                          <select id="filter-summary-date" class="sbox filter-select">
+                              <option value="all">All Dates</option>
+                          </select>
+                      </div>
+                      <div class="filter-item">
+                          <label for="filter-summary-day" class="filter-label">Day</label>
+                          <select id="filter-summary-day" class="sbox filter-select">
+                              <option value="all">All Days</option>
+                              <option value="Monday">Monday</option>
+                              <option value="Tuesday">Tuesday</option>
+                              <option value="Wednesday">Wednesday</option>
+                              <option value="Thursday">Thursday</option>
+                              <option value="Friday">Friday</option>
+                              <option value="Saturday">Saturday</option>
+                              <option value="Sunday">Sunday</option>
+                          </select>
+                      </div>
+                      <div class="filter-item">
+                          <label for="filter-summary-partner" class="filter-label">Shipping Partner</label>
+                          <select id="filter-summary-partner" class="sbox filter-select">
+                              <option value="all">All Partners</option>
+                          </select>
+                      </div>
+                      <div class="filter-item">
+                          <label for="filter-summary-match" class="filter-label">Match Status</label>
+                          <select id="filter-summary-match" class="sbox filter-select">
+                              <option value="all">All Statuses</option>
+                              <option value="true">Matched (True)</option>
+                              <option value="false">Unmatched (False)</option>
+                              <option value="pending">Pending Entry</option>
+                          </select>
+                      </div>
+                  </div>
+                  <div class="summary-filters-right">
+                      <button type="button" id="btn-reset-filters" class="btn-reset-filters" title="Reset filters">
+                          <span>Reset Filters</span>
+                      </button>
+                  </div>
+              </div>
+
+              <div class="table-container" id="summary-table-container" style="margin-top: 0.75rem;">
+                  <table id="summary-table">
+                      <thead>
+                          <tr>
+                              <th style="min-width: 110px;">Date</th>
+                              <th style="min-width: 95px;">Day</th>
+                              <th style="min-width: 160px;">Shipping Partner</th>
+                              <th style="text-align: right; min-width: 140px;">Total Collection Amount</th>
+                              <th style="text-align: center; min-width: 100px;">Number of Orders</th>
+                              <th style="text-align: right; min-width: 125px;">COD Fee / Order</th>
+                              <th style="text-align: right; min-width: 130px;">COD Expected</th>
+                              <th style="text-align: right; min-width: 155px;">COD Received</th>
+                              <th style="text-align: right; min-width: 125px;">COD Difference</th>
+                              <th style="text-align: center; min-width: 90px;">Match</th>
+                              <th style="min-width: 180px;">Remarks</th>
+                          </tr>
+                      </thead>
+                      <tbody id="summary-table-body">
+                          <!-- Injected via JS -->
+                      </tbody>
+                      <tfoot id="summary-table-foot">
+                          <!-- Grand total row -->
+                      </tfoot>
+                  </table>
+              </div>
+              <div class="pagination-bar hidden" id="summary-pagination-bar"></div>
+          </div>
+
+          <!-- All Orders Section -->
+          <div id="all-orders-section" class="hidden">
+              <div class="table-section-title" style="margin-top: 1rem; margin-bottom: 0.5rem;">
+                  <span>All Orders</span>
+                  <span id="all-orders-badge" class="table-section-badge">0 Orders</span>
+              </div>
+
+              <div class="table-container" id="table-container" style="margin-top: 0.5rem;">
+                    <table id="orders-table">
+                          <thead>
+                              <tr id="table-head">
+                                  <!-- Headers will be injected here -->
+                              </tr>
+                          </thead>
+                        <tbody id="table-body">
+                            <!-- Rows will be injected here -->
+                        </tbody>
+                    </table>
+              </div>
+
+              <div class="pagination-bar hidden" id="all-orders-pagination-bar"></div>
+          </div>
+      </main>
   </div>
 
-  <!-- Dashboard View -->
-  <div id="dashboardView" style="display: none;">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title" data-i18n="cod_res_title">Reconciliation Results</div>
-        <div class="topbar-meta" id="runMeta"></div>
-      </div>
-      <div class="cod-actions">
-        <button class="hbtn btn-excel" id="downloadExcelBtn">
-          <svg style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          <span data-i18n="cod_btn_excel">Download Excel</span>
-        </button>
-        <button class="hbtn" id="backToUploadBtn" data-i18n="cod_btn_back">Back</button>
-      </div>
-    </div>
+<script type="module" src="/js/roots_cod_dashboard.js?v=4.3.4"></script>
 
-    <div class="scards">
-      <div class="sc dark">
-        <div class="sc-l" data-i18n="cod_stat_total">Total COD to be Transferred</div>
-        <div class="sc-v" id="statTotalCod">0 JOD</div>
-        <div class="sc-s" data-i18n="cod_stat_total_sub">Matched orders (Partner Net)</div>
-      </div>
-      <div class="sc gc">
-        <div class="sc-l" data-i18n="cod_stat_matched">Matched Orders</div>
-        <div class="sc-v" id="statMatched">0</div>
-        <div class="sc-s" data-i18n="cod_stat_matched_sub">Found in both sheets</div>
-      </div>
-      <div class="sc rc">
-        <div class="sc-l" data-i18n="cod_stat_outliers">Outliers</div>
-        <div class="sc-v" id="statOutliers">0</div>
-        <div class="sc-s" data-i18n="cod_stat_outliers_sub">Mismatched or missing</div>
-      </div>
-      <div class="sc oc">
-        <div class="sc-l" data-i18n="cod_stat_postpaid">Postpaid Verified</div>
-        <div class="sc-v" id="statPostpaid">0</div>
-        <div class="sc-s" data-i18n="cod_stat_postpaid_sub">COD Applicable = TRUE</div>
-      </div>
-    </div>
-
-    <!-- Outliers Table -->
-    <div class="orders-box">
-      <div class="orders-hdr" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div class="tgrp">
-          <div class="topbar-title" data-i18n="cod_outliers_list">Outliers List</div>
-        </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
-          <div style="position: relative; width: 240px;">
-            <svg style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted);" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <input type="text" id="outliersSearch" data-i18n-placeholder="cod_search_ph" placeholder="Search Order ID..." class="outliers-filter search-input" style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--bdr); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--dark); outline: none;">
-          </div>
-          <select id="outliersTypeFilter" class="outliers-filter filter-select" style="padding: 8px 12px; border: 1px solid var(--bdr); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--dark); outline: none;">
-            <option value="All" data-i18n="cod_filter_all">All Types</option>
-            <option value="Missing in Partners" data-i18n="cod_filter_missing_part">Missing in Partners</option>
-            <option value="Not in Roots Orders" data-i18n="cod_filter_not_roots">Not in Roots Orders</option>
-          </select>
-        </div>
-      </div>
-      <div class="split-tables" style="display: flex; gap: 1rem; align-items: flex-start; margin-top: 1rem;">
-        
-        <!-- Matched Orders Table -->
-        <div style="flex: 1; background: var(--bg); border: 1px solid var(--bdr); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
-          <div style="padding: 12px 16px; border-bottom: 1px solid var(--bdr); font-weight: 600;" data-i18n="cod_stat_matched">Matched Orders</div>
-          <div class="twrap" style="max-height: 400px; overflow-y: auto;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead style="position: sticky; top: 0; background: var(--bg); box-shadow: 0 1px 0 var(--bdr);">
-                <tr class="hrow">
-                  <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: var(--muted);" data-i18n="th_courier">Courier</th>
-                  <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: var(--muted);" data-i18n="th_order_ref">Order ID</th>
-                  <th style="padding: 10px 16px; text-align: left; font-size: 12px; color: var(--muted);" data-i18n="th_amount">Amount</th>
-                </tr>
-              </thead>
-              <tbody id="matchedTableBody">
-              </tbody>
-            </table>
-          </div>
-          <div class="pagination" id="matchedPagination" style="padding: 10px 16px; border-top: 1px solid var(--bdr); display: flex; justify-content: space-between; align-items: center;">
-            <button id="matchedPrev" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Previous</button>
-            <span id="matchedPageInfo" style="font-size: 12px; color: var(--muted);">Page 1 of 1</span>
-            <button id="matchedNext" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Next</button>
-          </div>
-        </div>
-
-        <!-- Outliers Table -->
-        <div style="flex: 1; background: var(--bg); border: 1px solid var(--bdr); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
-          <div style="padding: 12px 16px; border-bottom: 1px solid var(--bdr); font-weight: 600;" data-i18n="cod_stat_outliers">Outliers</div>
-          <div class="twrap" style="max-height: 400px; overflow-y: auto;">
-        <table>
-          <thead>
-            <tr class="hrow">
-              <th data-i18n="th_type">Type</th>
-              <th data-i18n="th_order_ref">Order ID / Ref</th>
-              <th data-i18n="th_amount">Amount</th>
-              <th data-i18n="th_source">Source</th>
-            </tr>
-          </thead>
-          <tbody id="outliersTableBody">
-          </tbody>
-        </table>
-      </div>
-      <div class="pagination" id="outliersPagination" style="padding: 10px 16px; border-top: 1px solid var(--bdr); display: flex; justify-content: space-between; align-items: center;">
-        <button id="outliersPrev" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Previous</button>
-        <span id="outliersPageInfo">Page 1 of 1</span>
-            <button id="outliersNext" disabled style="padding: 6px 12px; border: 1px solid var(--bdr); background: transparent; border-radius: 6px; cursor: pointer;">Next</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-  </div>
-
-  <!-- History View -->
-  <div id="historyView" style="display: none; padding: 1.5rem 2rem;">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title" data-i18n="cod_hist_title">Past Reconciliations</div>
-        <div class="topbar-meta" data-i18n="cod_hist_sub">Review all your previous COD runs</div>
-      </div>
-      <div class="cod-actions" style="position: static;">
-        <button class="hbtn" id="backFromHistoryBtn" data-i18n="cod_btn_back_up">Back to Upload</button>
-      </div>
-    </div>
-    <div class="orders-box" style="margin-top: 1rem;">
-      <div class="twrap">
-        <table>
-          <thead>
-            <tr class="hrow">
-              <th data-i18n="th_run_id">Run ID</th>
-              <th data-i18n="th_date">Date</th>
-              <th data-i18n="th_total_cod">Total COD</th>
-              <th data-i18n="th_matched_outliers">Matched / Outliers</th>
-              <th data-i18n="th_status">Status</th>
-              <th data-i18n="th_actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="historyTableBody">
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-<script type="module" src="/js/roots_cod_dashboard.js"></script>
 </body>
 </html>

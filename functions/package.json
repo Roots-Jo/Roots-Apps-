@@ -3,6 +3,7 @@
   "description": "Cloud Functions for Roots Orders backend",
   "scripts": {
     "lint": "eslint .",
+    "manifest": "node gen-manifest.js",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
