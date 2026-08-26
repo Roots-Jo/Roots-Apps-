@@ -376,41 +376,85 @@ document.addEventListener('DOMContentLoaded', async () => {
         return toReturn;
     }
 
+    function cleanSinglePhoneNumber(val) {
+        if (val === undefined || val === null) return '';
+        let str = String(val).trim();
+        if (!str) return '';
+
+        let cleaned = str.replace(/[\s\-\(\)\.]/g, '');
+
+        if (/^\+962/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^\+962/i, '');
+        } else if (/^\+(?:966|971|965|974|973|968|961|964|970|972|20|1)/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^\+(?:966|971|965|974|973|968|961|964|970|972|20|1)/i, '');
+        } else if (/^\+\d{1,4}/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^\+\d{1,4}/i, '');
+        } else if (/^00962/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^00962/i, '');
+        } else if (/^00(?:966|971|965|974|973|968|961|964|970|972|20|1)/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^00(?:966|971|965|974|973|968|961|964|970|972|20|1)/i, '');
+        } else if (/^962(?=0?7[789]\d{7})/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^962/i, '');
+        } else if (/^966(?=5\d{8})/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^966/i, '');
+        } else if (/^971(?=5\d{8})/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^971/i, '');
+        }
+
+        cleaned = cleaned.replace(/\D/g, '');
+        return cleaned || str;
+    }
+
+    function cleanPhoneNumber(val) {
+        if (val === undefined || val === null) return '';
+        let str = String(val).trim();
+        if (!str) return '';
+
+        if (str.includes(',') || str.includes('/') || str.includes('|')) {
+            const parts = str.split(/[,/|]/).map(p => cleanSinglePhoneNumber(p)).filter(Boolean);
+            return parts.join(' / ');
+        }
+
+        return cleanSinglePhoneNumber(str);
+    }
+
     function convertToCSV(ordersArray) {
         if (!ordersArray || ordersArray.length === 0) return '';
         const flattenedOrders = ordersArray.map(order => flattenObject(order));
         
         const headers = [
-            "order_id", 
-            "order_created_at", 
-            "customer_first_name",
-            "customer_last_name",
-            "billing_address_city", 
-            "billing_address_state",
-            "billing_address_address1", 
-            "customer_mobile", 
-            "invoice_total",
+            "order_id",
+            "order_created_at",
             "toBeDelivered",
             "status",
+            "customer_first_name",
+            "customer_last_name",
+            "customer_mobile", 
+            "billing_address_city",
+            "billing_address_address1",
+            "invoice_total",
+            "shipping_address_latitude",
+            "shipping_address_longitude",
             "mapped_area",
             "mapped_area_ar",
             "mapped_neighborhood",
             "mapped_neighborhood_ar",
             "note"
         ];
-        
+
         const headerLabels = {
             "order_id": "Order ID",
-            "order_created_at": "Created At",
+            "order_created_at": "Order Date",
+            "toBeDelivered": "To Be Delivered",
+            "status": "Delivery Status",
             "customer_first_name": "First Name",
             "customer_last_name": "Last Name",
-            "billing_address_city": "City",
-            "billing_address_state": "State",
-            "billing_address_address1": "Address 1",
             "customer_mobile": "Mobile",
-            "invoice_total": "Total",
-            "toBeDelivered": "To Be Delivered",
-            "status": "Status",
+            "billing_address_city": "City",
+            "billing_address_address1": "Address",
+            "invoice_total": "Total Amount",
+            "shipping_address_latitude": "Latitude",
+            "shipping_address_longitude": "Longitude",
             "mapped_area": "Mapped Area",
             "mapped_area_ar": "Mapped Area Ar",
             "mapped_neighborhood": "Neighborhood",
@@ -431,8 +475,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     cellValue = cellValue.split(' ')[0];
                 }
                 
+                const isPhoneHeader = header === 'customer_mobile' || 
+                                      header === 'billing_address_phone' || 
+                                      header.toLowerCase().includes('phone') || 
+                                      header.toLowerCase().includes('mobile');
+                
+                if (isPhoneHeader && cellValue) {
+                    cellValue = cleanPhoneNumber(cellValue);
+                }
+
                 cellValue = String(cellValue);
-                if (header === 'customer_mobile' || header === 'billing_address_phone' || header === 'order_id') {
+                if (isPhoneHeader || header === 'order_id') {
                     cellValue = `="${cellValue}"`;
                 } else if (cellValue.includes(',') || cellValue.includes('"') || cellValue.includes('\n') || cellValue.includes('\r')) {
                     cellValue = `"${cellValue.replace(/"/g, '""')}"`;

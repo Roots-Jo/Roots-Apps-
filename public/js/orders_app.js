@@ -1011,6 +1011,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CSV Conversion Logic ---
 
+    function cleanSinglePhoneNumber(val) {
+        if (val === undefined || val === null) return '';
+        let str = String(val).trim();
+        if (!str) return '';
+
+        // Remove internal formatting chars (spaces, dashes, dots, parentheses)
+        let cleaned = str.replace(/[\s\-\(\)\.]/g, '');
+
+        // 1. Remove explicit + country codes
+        if (/^\+962/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^\+962/i, '');
+        } else if (/^\+(?:966|971|965|974|973|968|961|964|970|972|20|1)/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^\+(?:966|971|965|974|973|968|961|964|970|972|20|1)/i, '');
+        } else if (/^\+\d{1,4}/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^\+\d{1,4}/i, '');
+        }
+        // 2. Remove 00 country codes
+        else if (/^00962/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^00962/i, '');
+        } else if (/^00(?:966|971|965|974|973|968|961|964|970|972|20|1)/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^00(?:966|971|965|974|973|968|961|964|970|972|20|1)/i, '');
+        }
+        // 3. Remove raw 962 prefix if followed by Jordan mobile number pattern
+        else if (/^962(?=0?7[789]\d{7})/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^962/i, '');
+        }
+        // 4. Remove raw other country codes
+        else if (/^966(?=5\d{8})/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^966/i, '');
+        } else if (/^971(?=5\d{8})/i.test(cleaned)) {
+            cleaned = cleaned.replace(/^971/i, '');
+        }
+
+        // Keep only numbers
+        cleaned = cleaned.replace(/\D/g, '');
+
+        return cleaned || str;
+    }
+
+    function cleanPhoneNumber(val) {
+        if (val === undefined || val === null) return '';
+        let str = String(val).trim();
+        if (!str) return '';
+
+        if (str.includes(',') || str.includes('/') || str.includes('|')) {
+            const parts = str.split(/[,/|]/).map(p => cleanSinglePhoneNumber(p)).filter(Boolean);
+            return parts.join(' / ');
+        }
+
+        return cleanSinglePhoneNumber(str);
+    }
+
     function flattenObject(ob) {
         var toReturn = {};
 
@@ -1059,10 +1111,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = headers.map(header => {
                 let cellValue = order[header] !== undefined && order[header] !== null ? order[header] : '';
 
+                const isPhoneHeader = header === 'customer_mobile' || 
+                                      header === 'billing_address_phone' || 
+                                      header === 'shipping_address_phone' ||
+                                      header.toLowerCase().includes('phone') || 
+                                      header.toLowerCase().includes('mobile');
+
+                if (isPhoneHeader && cellValue) {
+                    cellValue = cleanPhoneNumber(cellValue);
+                }
+
                 cellValue = String(cellValue);
 
                 // Force Excel to treat phone numbers and IDs as text by formatting them as a formula: ="value"
-                if (header === 'customer_mobile' || header === 'billing_address_phone' || header === 'order_id') {
+                if (isPhoneHeader || header === 'order_id') {
                     cellValue = `="${cellValue}"`;
                 } else if (cellValue.includes(',') || cellValue.includes('"') || cellValue.includes('\n') || cellValue.includes('\r')) {
                     cellValue = `"${cellValue.replace(/"/g, '""')}"`;
@@ -1122,10 +1184,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     cellValue = order[header] !== undefined && order[header] !== null ? order[header] : '';
                 }
 
+                const isPhoneHeader = header === 'customer_mobile' || 
+                                      header === 'billing_address_phone' || 
+                                      header === 'shipping_address_phone' ||
+                                      header.toLowerCase().includes('phone') || 
+                                      header.toLowerCase().includes('mobile');
+
+                if (isPhoneHeader && cellValue) {
+                    cellValue = cleanPhoneNumber(cellValue);
+                }
+
                 cellValue = String(cellValue);
 
                 // Force Excel to treat phone numbers and IDs as text
-                if (header === 'customer_mobile' || header === 'billing_address_phone' || header === 'order_id') {
+                if (isPhoneHeader || header === 'order_id') {
                     cellValue = `="${cellValue}"`;
                 } else if (cellValue.includes(',') || cellValue.includes('"') || cellValue.includes('\n') || cellValue.includes('\r')) {
                     cellValue = `"${cellValue.replace(/"/g, '""')}"`;

@@ -1,202 +1,298 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title data-i18n="cod_title">Roots COD Orders</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/index.css?v=2.0.1">
-<link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
-<link rel="stylesheet" href="../css/orders.css?v=2.1.1">
-<script type="module" src="/js/auth.js"></script>
-<script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-<script src="/js/arabic.js?v=2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="cod_title">Roots COD Orders</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/index.css?v=2.0.1">
+    <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
+    <link rel="stylesheet" href="../css/orders.css?v=2.1.1">
+    <script type="module" src="/js/auth.js"></script>
+    <script>if (localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');</script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="/js/arabic.js?v=2"></script>
 </head>
+
 <body>
 
-  <div id="navbar"></div>
-  <script src="/js/navbar.js?v=1.0.7"></script>
+    <div id="navbar"></div>
+    <script src="/js/navbar.js?v=1.0.7"></script>
 
-  <nav class="orders-nav" style="width: 100%; border-bottom: 1px solid var(--border); margin-bottom: 0; background: var(--bg);">
-      <div class="nav-content" style="display: flex; justify-content: center; padding: 0 20px;">
-          <div class="nav-links" style="display: flex; gap: 2rem; padding-top: 10px;">
-              <a href="/roots_cod_dashboard" class="nav-link" style="color: var(--orange); font-weight: 600; text-decoration: none; border-bottom: 3px solid var(--orange); padding-bottom: 4px;">COD Orders</a>
-          </div>
-      </div>
-  </nav>
+    <nav class="orders-nav"
+        style="width: 100%; border-bottom: 1px solid var(--border); margin-bottom: 0; background: var(--bg);">
+        <div class="nav-content" style="display: flex; justify-content: center; padding: 0 20px;">
+            <div class="nav-links" style="display: flex; gap: 2rem; padding-top: 10px;">
+                <a href="/roots_cod_dashboard" class="nav-link"
+                    style="color: var(--orange); font-weight: 600; text-decoration: none; border-bottom: 3px solid var(--orange); padding-bottom: 4px;">COD
+                    Orders</a>
+            </div>
+        </div>
+    </nav>
 
-  <div class="container">
-      <main class="page-card">
-          <!-- Admin Manual Sync Panel (Visible only to Admins) -->
-          <div id="admin-fetch-container" class="hidden" style="margin-bottom: 1.5rem; background: var(--hover-bg, #fdfaf8); border: 1px solid var(--bdr); border-radius: 8px; padding: 12px 16px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                  <span style="font-size: 13px; font-weight: 700; color: var(--orange);">⚡ Admin Sync / Backfill COD Orders</span>
-                  <span style="font-size: 11px; color: var(--muted);">Manual sync updates the database immediately</span>
-              </div>
-              <form id="fetch-form">
-                  <div class="controls-bar" style="margin-bottom: 0;">
-                      <div class="controls-left">
-                          <div class="input-group">
-                              <label class="section-label">Select Sellers</label>
-                              <div class="custom-dropdown" id="sellers-dropdown">
-                                  <div class="sbox dropdown-toggle" id="sellers-toggle">
-                                      <span id="sellers-toggle-text">Loading...</span>
-                                      <span class="arrow">▼</span>
-                                  </div>
-                                  <div class="checkbox-container" id="sellers-container">
-                                      <div class="loader-small"></div> <span class="muted-text">Loading sellers...</span>
-                                  </div>
-                              </div>
-                          </div>
+    <div class="container">
+        <main class="page-card">
+            <!-- Admin Manual Sync Panel (Visible only to Admins) -->
+            <div id="admin-fetch-container" class="hidden"
+                style="margin-bottom: 1.5rem; background: var(--hover-bg, #fdfaf8); border: 1px solid var(--bdr); border-radius: 8px; padding: 12px 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 13px; font-weight: 700; color: var(--orange);">⚡ Admin Sync / Backfill COD
+                        Orders</span>
+                    <span style="font-size: 11px; color: var(--muted);">Manual sync updates the database
+                        immediately</span>
+                </div>
+                <form id="fetch-form">
+                    <div class="controls-bar" style="margin-bottom: 0;">
+                        <div class="controls-left">
+                            <div class="input-group">
+                                <label class="section-label">Select Sellers</label>
+                                <div class="custom-dropdown" id="sellers-dropdown">
+                                    <div class="sbox dropdown-toggle" id="sellers-toggle">
+                                        <span id="sellers-toggle-text">Loading...</span>
+                                        <span class="arrow">▼</span>
+                                    </div>
+                                    <div class="checkbox-container" id="sellers-container">
+                                        <div class="loader-small"></div> <span class="muted-text">Loading
+                                            sellers...</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                          <div class="input-group">
-                              <label for="start-date" class="section-label">Start Date</label>
-                              <input type="date" id="start-date" class="sbox" required>
-                          </div>
-                          
-                          <div class="input-group">
-                              <label for="end-date" class="section-label">End Date</label>
-                              <input type="date" id="end-date" class="sbox" required>
-                          </div>
-                      </div>
+                            <div class="input-group">
+                                <label for="start-date" class="section-label">Start Date</label>
+                                <input type="date" id="start-date" class="sbox" required>
+                            </div>
 
-                      <div class="controls-right">
-                          <button type="submit" id="fetch-btn" class="run-btn">
-                              <span class="btn-text">Sync Date Range</span>
-                              <div class="loader hidden" id="btn-loader"></div>
-                          </button>
-                      </div>
-                  </div>
-              </form>
-          </div>
-          
-          <div id="status-message" class="status-message hidden badge"></div>
+                            <div class="input-group">
+                                <label for="end-date" class="section-label">End Date</label>
+                                <input type="date" id="end-date" class="sbox" required>
+                            </div>
+                        </div>
 
-          <div id="empty-state" class="empty-state">
-              <div class="empty-icon">📦</div>
-              <h3 id="empty-state-title">Loading COD Orders...</h3>
-              <p id="empty-state-text">Fetching saved orders from the database.</p>
-          </div>
+                        <div class="controls-right">
+                            <button type="submit" id="fetch-btn" class="run-btn">
+                                <span class="btn-text">Sync Date Range</span>
+                                <div class="loader hidden" id="btn-loader"></div>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
 
-          <!-- Delivered Orders Summary Table -->
-          <div id="summary-section" class="hidden" style="margin-top: 1rem; margin-bottom: 2.5rem;">
-              <div class="table-section-title">
-                  <div class="section-title-left">
-                      <span>Delivered Orders Summary</span>
-                      <span id="delivered-badge" class="table-section-badge">0 Delivered</span>
-                  </div>
-                  <div class="section-title-right" style="display: flex; gap: 0.75rem; align-items: center;">
-                      <button type="button" id="export-btn" class="export-btn hidden" style="padding: 6px 14px; font-size: 12px;">
-                          <span>Export to Excel</span>
-                      </button>
-                      <button type="button" id="btn-toggle-all-collapse" class="btn-toggle-collapse">
-                          <span id="collapse-all-icon">▼</span>
-                          <span id="collapse-all-text">Collapse All</span>
-                      </button>
-                  </div>
-              </div>
+            <div id="status-message" class="status-message hidden badge"></div>
 
-              <!-- Summary Filters Bar -->
-              <div class="summary-filters-bar" id="summary-filters-bar">
-                  <div class="summary-filters-left">
-                      <div class="filter-item">
-                          <label for="filter-summary-date" class="filter-label">Date</label>
-                          <select id="filter-summary-date" class="sbox filter-select">
-                              <option value="all">All Dates</option>
-                          </select>
-                      </div>
-                      <div class="filter-item">
-                          <label for="filter-summary-day" class="filter-label">Day</label>
-                          <select id="filter-summary-day" class="sbox filter-select">
-                              <option value="all">All Days</option>
-                              <option value="Monday">Monday</option>
-                              <option value="Tuesday">Tuesday</option>
-                              <option value="Wednesday">Wednesday</option>
-                              <option value="Thursday">Thursday</option>
-                              <option value="Friday">Friday</option>
-                              <option value="Saturday">Saturday</option>
-                              <option value="Sunday">Sunday</option>
-                          </select>
-                      </div>
-                      <div class="filter-item">
-                          <label for="filter-summary-partner" class="filter-label">Shipping Partner</label>
-                          <select id="filter-summary-partner" class="sbox filter-select">
-                              <option value="all">All Partners</option>
-                          </select>
-                      </div>
-                      <div class="filter-item">
-                          <label for="filter-summary-match" class="filter-label">Match Status</label>
-                          <select id="filter-summary-match" class="sbox filter-select">
-                              <option value="all">All Statuses</option>
-                              <option value="true">Matched (True)</option>
-                              <option value="false">Unmatched (False)</option>
-                              <option value="pending">Pending Entry</option>
-                          </select>
-                      </div>
-                  </div>
-                  <div class="summary-filters-right">
-                      <button type="button" id="btn-reset-filters" class="btn-reset-filters" title="Reset filters">
-                          <span>Reset Filters</span>
-                      </button>
-                  </div>
-              </div>
+            <div id="empty-state" class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3 id="empty-state-title">Loading COD Orders...</h3>
+                <p id="empty-state-text">Fetching saved orders from the database.</p>
+            </div>
 
-              <div class="table-container" id="summary-table-container" style="margin-top: 0.75rem;">
-                  <table id="summary-table">
-                      <thead>
-                          <tr>
-                              <th style="min-width: 110px;">Date</th>
-                              <th style="min-width: 95px;">Day</th>
-                              <th style="min-width: 160px;">Shipping Partner</th>
-                              <th style="text-align: right; min-width: 140px;">Total Collection Amount</th>
-                              <th style="text-align: center; min-width: 100px;">Number of Orders</th>
-                              <th style="text-align: right; min-width: 125px;">COD Fee / Order</th>
-                              <th style="text-align: right; min-width: 130px;">COD Expected</th>
-                              <th style="text-align: right; min-width: 155px;">COD Received</th>
-                              <th style="text-align: right; min-width: 125px;">COD Difference</th>
-                              <th style="text-align: center; min-width: 90px;">Match</th>
-                              <th style="min-width: 180px;">Remarks</th>
-                          </tr>
-                      </thead>
-                      <tbody id="summary-table-body">
-                          <!-- Injected via JS -->
-                      </tbody>
-                      <tfoot id="summary-table-foot">
-                          <!-- Grand total row -->
-                      </tfoot>
-                  </table>
-              </div>
-              <div class="pagination-bar hidden" id="summary-pagination-bar"></div>
-          </div>
+            <!-- Delivered Orders Summary Table -->
+            <div id="summary-section" class="hidden" style="margin-top: 1rem; margin-bottom: 2.5rem;">
+                <div class="table-section-title">
+                    <div class="section-title-left">
+                        <span>Delivered Orders Summary</span>
+                        <span id="delivered-badge" class="table-section-badge">0 Delivered</span>
+                    </div>
+                    <div class="section-title-right" style="display: flex; gap: 0.75rem; align-items: center;">
+                        <button type="button" id="export-btn" class="export-btn hidden"
+                            style="padding: 6px 14px; font-size: 12px;">
+                            <span>Export to Excel</span>
+                        </button>
+                        <button type="button" id="btn-toggle-all-collapse" class="btn-toggle-collapse">
+                            <span id="collapse-all-icon">▼</span>
+                            <span id="collapse-all-text">Collapse All</span>
+                        </button>
+                    </div>
+                </div>
 
-          <!-- All Orders Section -->
-          <div id="all-orders-section" class="hidden">
-              <div class="table-section-title" style="margin-top: 1rem; margin-bottom: 0.5rem;">
-                  <span>All Orders</span>
-                  <span id="all-orders-badge" class="table-section-badge">0 Orders</span>
-              </div>
+                <!-- Summary Filters Bar -->
+                <div class="summary-filters-bar" id="summary-filters-bar">
+                    <div class="summary-filters-left">
+                        <div class="filter-item">
+                            <label for="filter-summary-date" class="filter-label">Date</label>
+                            <select id="filter-summary-date" class="sbox filter-select">
+                                <option value="all">All Dates</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-summary-day" class="filter-label">Day</label>
+                            <select id="filter-summary-day" class="sbox filter-select">
+                                <option value="all">All Days</option>
+                                <option value="Monday">Monday</option>
+                                <option value="Tuesday">Tuesday</option>
+                                <option value="Wednesday">Wednesday</option>
+                                <option value="Thursday">Thursday</option>
+                                <option value="Friday">Friday</option>
+                                <option value="Saturday">Saturday</option>
+                                <option value="Sunday">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-summary-partner" class="filter-label">Shipping Partner</label>
+                            <select id="filter-summary-partner" class="sbox filter-select">
+                                <option value="all">All Partners</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-summary-store" class="filter-label">Store Name</label>
+                            <select id="filter-summary-store" class="sbox filter-select">
+                                <option value="all">All Stores</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-summary-match" class="filter-label">Match Status</label>
+                            <select id="filter-summary-match" class="sbox filter-select">
+                                <option value="all">All Statuses</option>
+                                <option value="true">Matched (True)</option>
+                                <option value="false">Unmatched (False)</option>
+                                <option value="pending">Pending Entry</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="summary-filters-right">
+                        <button type="button" id="btn-reset-filters" class="btn-reset-filters" title="Reset filters">
+                            <span>Reset Filters</span>
+                        </button>
+                    </div>
+                </div>
 
-              <div class="table-container" id="table-container" style="margin-top: 0.5rem;">
+                <div class="table-container" id="summary-table-container" style="margin-top: 0.75rem;">
+                    <table id="summary-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 110px;">Date</th>
+                                <th style="min-width: 95px;">Day</th>
+                                <th style="min-width: 160px;">Shipping Partner</th>
+                                <th style="text-align: right; min-width: 140px;">Total Collection Amount</th>
+                                <th style="text-align: center; min-width: 100px;">Number of Orders</th>
+                                <th style="text-align: right; min-width: 125px;">COD Fee / Order</th>
+                                <th style="text-align: right; min-width: 130px;">COD Expected</th>
+                                <th style="text-align: right; min-width: 155px;">COD Received</th>
+                                <th style="text-align: right; min-width: 125px;">COD Difference</th>
+                                <th style="text-align: center; min-width: 90px;">Match</th>
+                                <th style="min-width: 180px;">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summary-table-body">
+                            <!-- Injected via JS -->
+                        </tbody>
+                        <tfoot id="summary-table-foot">
+                            <!-- Grand total row -->
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="pagination-bar hidden" id="summary-pagination-bar"></div>
+            </div>
+
+            <!-- All Orders Section -->
+            <div id="all-orders-section" class="hidden">
+                <div class="table-section-title" style="margin-top: 1.5rem; margin-bottom: 0.5rem;">
+                    <div class="section-title-left">
+                        <span>All Orders</span>
+                        <span id="all-orders-badge" class="table-section-badge">0 Orders</span>
+                    </div>
+                </div>
+
+                <!-- All Orders Filters Bar -->
+                <div class="summary-filters-bar" id="orders-filters-bar"
+                    style="margin-top: 0.5rem; margin-bottom: 0.75rem;">
+                    <div class="summary-filters-left">
+                        <div class="filter-item">
+                            <label for="filter-orders-delivered-date" class="filter-label">Delivered Date</label>
+                            <select id="filter-orders-delivered-date" class="sbox filter-select">
+                                <option value="all">All Delivered Dates</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-delivered-start" class="filter-label">Delivered From</label>
+                            <input type="date" id="filter-orders-delivered-start" class="sbox filter-select">
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-delivered-end" class="filter-label">Delivered To</label>
+                            <input type="date" id="filter-orders-delivered-end" class="sbox filter-select">
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-created-date" class="filter-label">Created Date</label>
+                            <select id="filter-orders-created-date" class="sbox filter-select">
+                                <option value="all">All Created Dates</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-created-start" class="filter-label">Created From</label>
+                            <input type="date" id="filter-orders-created-start" class="sbox filter-select">
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-created-end" class="filter-label">Created To</label>
+                            <input type="date" id="filter-orders-created-end" class="sbox filter-select">
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-store" class="filter-label">Store Name</label>
+                            <select id="filter-orders-store" class="sbox filter-select">
+                                <option value="all">All Stores</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-partner" class="filter-label">Shipping Partner</label>
+                            <select id="filter-orders-partner" class="sbox filter-select">
+                                <option value="all">All Partners</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-custom-label" class="filter-label">Custom Label</label>
+                            <select id="filter-orders-custom-label" class="sbox filter-select">
+                                <option value="all">All Custom Labels</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-tag" class="filter-label">Tag</label>
+                            <select id="filter-orders-tag" class="sbox filter-select">
+                                <option value="all">All Tags</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="filter-orders-status" class="filter-label">Status</label>
+                            <select id="filter-orders-status" class="sbox filter-select">
+                                <option value="all">All Statuses</option>
+                            </select>
+                        </div>
+                        <div class="filter-item" style="flex: 1; min-width: 160px;">
+                            <label for="filter-orders-search" class="filter-label">Search</label>
+                            <input type="text" id="filter-orders-search" class="sbox filter-select"
+                                placeholder="Search order ID, store, custom labels, tags...">
+                        </div>
+                    </div>
+                    <div class="summary-filters-right">
+                        <button type="button" id="btn-reset-orders-filters" class="btn-reset-filters"
+                            title="Reset all order filters">
+                            <span>Reset Filters</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container" id="table-container" style="margin-top: 0.5rem;">
                     <table id="orders-table">
-                          <thead>
-                              <tr id="table-head">
-                                  <!-- Headers will be injected here -->
-                              </tr>
-                          </thead>
+                        <thead>
+                            <tr id="table-head">
+                                <!-- Headers will be injected here -->
+                            </tr>
+                        </thead>
                         <tbody id="table-body">
                             <!-- Rows will be injected here -->
                         </tbody>
                     </table>
-              </div>
+                </div>
 
-              <div class="pagination-bar hidden" id="all-orders-pagination-bar"></div>
-          </div>
-      </main>
-  </div>
+                <div class="pagination-bar hidden" id="all-orders-pagination-bar"></div>
+            </div>
+        </main>
+    </div>
 
-<script type="module" src="/js/roots_cod_dashboard.js?v=4.3.4"></script>
+    <script type="module" src="/js/roots_cod_dashboard.js?v=4.6.0"></script>
 
 </body>
+
 </html>

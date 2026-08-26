@@ -60,7 +60,8 @@ async function seedOrders() {
         let stopFetching = false;
 
         for (const order of pageOrders) {
-          order.tags = order.tags || order.custom_labels || order.labels || [];
+          order.tags = order.tags || [];
+          order.custom_labels = order.custom_labels || [];
           let createdAt = order.order_created_at || "";
           if (createdAt && !createdAt.includes('T')) createdAt = createdAt.replace(' ', 'T');
           if (createdAt && !createdAt.endsWith('Z') && !createdAt.includes('+')) createdAt += '+03:00';

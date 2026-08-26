@@ -76,7 +76,8 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
             let stopFetching = false;
 
             for (const order of pageOrders) {
-              order.tags = order.tags || order.custom_labels || order.labels || [];
+              order.tags = order.tags || [];
+              order.custom_labels = order.custom_labels || [];
               let createdAt = order.order_created_at || "";
 
               if (createdAt && !createdAt.includes('T')) createdAt = createdAt.replace(' ', 'T');
@@ -434,7 +435,8 @@ async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes 
           let validOrders = [];
 
           for (const order of pageOrders) {
-            order.tags = order.tags || order.custom_labels || order.labels || [];
+            order.tags = order.tags || [];
+            order.custom_labels = order.custom_labels || [];
             const dateInfo = extractOrderDateKey(order);
 
             if (dateInfo && dateInfo.timestamp >= startTimestamp && dateInfo.timestamp <= endTimestamp) {
