@@ -1341,7 +1341,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <tr class="partner-row ${isCollapsed ? 'collapsed' : ''}" data-date-key="${escapeHtml(dateGroup.dateKey)}" data-key="${escapeHtml(p.groupKey)}">
                     <td><strong>${escapeHtml(dateGroup.shortDate)}</strong></td>
                     <td><span class="day-badge">${escapeHtml(dateGroup.dayName)}</span></td>
-                    <td><span class="partner-tag-badge">${escapeHtml(p.partnerName)}</span></td>
+                    <td>
+                        <span class="partner-tag-badge">${escapeHtml(p.partnerName)}</span>
+                        <button type="button" class="btn-view-orders" data-date="${escapeHtml(dateGroup.dateKey)}" data-partner="${escapeHtml(p.partnerName)}" title="Show these orders in All Orders table" style="margin-left: 6px; padding: 2px 6px; font-size: 11px; background: var(--bg-hover); border: 1px solid var(--bdr); border-radius: 4px; cursor: pointer; color: var(--dark);">🔍</button>
+                    </td>
                     <td style="text-align: right; font-weight: 700; color: var(--orange); font-size: 13px;">${formatDue} JOD</td>
                     <td style="text-align: center; font-weight: 700;">${p.count}</td>
                     <td style="text-align: right;">${feeControlHtml}</td>
@@ -1371,7 +1374,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <strong>${escapeHtml(dateGroup.shortDate)}</strong>
                 </td>
                 <td><span class="day-badge">${escapeHtml(dateGroup.dayName)}</span></td>
-                <td><strong>Total (${dateGroup.partners.length} Partner${dateGroup.partners.length > 1 ? 's' : ''})</strong></td>
+                <td>
+                    <strong>Total (${dateGroup.partners.length} Partner${dateGroup.partners.length > 1 ? 's' : ''})</strong>
+                    <button type="button" class="btn-view-orders" data-date="${escapeHtml(dateGroup.dateKey)}" data-partner="all" title="Show all orders for this day in All Orders table" style="margin-left: 6px; padding: 2px 6px; font-size: 11px; background: var(--bg-hover); border: 1px solid var(--bdr); border-radius: 4px; cursor: pointer; color: var(--dark);">🔍</button>
+                </td>
                 <td style="text-align: right; font-weight: 800; color: var(--orange); font-size: 13px;">${dateGroup.dayCollection.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} JOD</td>
                 <td style="text-align: center; font-weight: 800;">${dateGroup.dayOrders}</td>
                 <td style="text-align: right; color: var(--muted); font-weight: 600;">-</td>
@@ -1409,6 +1415,73 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
+            // View Orders button listeners
+            summaryBody.querySelectorAll('.btn-view-orders').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const dateVal = btn.getAttribute('data-date');
+                    const partnerVal = btn.getAttribute('data-partner');
+
+                    // Reset all other filters
+                    ordersFilterCreatedDate = 'all';
+                    ordersFilterCreatedStart = '';
+                    ordersFilterCreatedEnd = '';
+                    ordersFilterStore = 'all';
+                    ordersFilterCustomLabel = 'all';
+                    ordersFilterTag = 'all';
+                    ordersFilterStatus = 'all';
+                    ordersFilterSearch = '';
+
+                    // Apply date and partner filters
+                    // Use the dateVal directly — getFilteredOrders matches delInfo.dateKey === ordersFilterDeliveredDate
+                    ordersFilterDeliveredDate = dateVal;
+                    ordersFilterDeliveredStart = dateVal;
+                    ordersFilterDeliveredEnd = dateVal;
+                    ordersFilterPartner = partnerVal;
+
+                    // Sync DOM inputs to match — using actual IDs from initOrdersFilterListeners
+                    const delDateSel = document.getElementById('filter-orders-delivered-date');
+                    const delStartInp = document.getElementById('filter-orders-delivered-start');
+                    const delEndInp = document.getElementById('filter-orders-delivered-end');
+                    const partnerSel = document.getElementById('filter-orders-partner');
+                    const creDateSel = document.getElementById('filter-orders-created-date');
+                    const creStartInp = document.getElementById('filter-orders-created-start');
+                    const creEndInp = document.getElementById('filter-orders-created-end');
+                    const storeSel = document.getElementById('filter-orders-store');
+                    const customLabelSel = document.getElementById('filter-orders-custom-label');
+                    const tagSel = document.getElementById('filter-orders-tag');
+                    const statusSel = document.getElementById('filter-orders-status');
+                    const searchInp = document.getElementById('filter-orders-search');
+
+                    if (delDateSel) {
+                        // Try to set to the exact date if it exists as an option, otherwise use custom range
+                        const hasOption = Array.from(delDateSel.options).some(o => o.value === dateVal);
+                        delDateSel.value = hasOption ? dateVal : 'all';
+                    }
+                    if (delStartInp) delStartInp.value = dateVal;
+                    if (delEndInp) delEndInp.value = dateVal;
+                    if (partnerSel) partnerSel.value = partnerVal;
+                    if (creDateSel) creDateSel.value = 'all';
+                    if (creStartInp) creStartInp.value = '';
+                    if (creEndInp) creEndInp.value = '';
+                    if (storeSel) storeSel.value = 'all';
+                    if (customLabelSel) customLabelSel.value = 'all';
+                    if (tagSel) tagSel.value = 'all';
+                    if (statusSel) statusSel.value = 'all';
+                    if (searchInp) searchInp.value = '';
+
+                    ordersCurrentPage = 1;
+                    renderOrdersTable();
+
+                    // Scroll to All Orders section
+                    const allOrdersSection = document.getElementById('all-orders-section');
+                    if (allOrdersSection) {
+                        allOrdersSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            });
             // COD Fee input listeners
             summaryBody.querySelectorAll('.cod-fee-input:not(:disabled)').forEach(feeInp => {
                 feeInp.addEventListener('input', (e) => {
