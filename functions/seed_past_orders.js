@@ -96,22 +96,57 @@ async function seedOrders() {
 
   console.log(`[Seed] Total orders retrieved: ${allOrders.length}. Saving to Firebase Realtime Database...`);
 
+  function extractOrderDateKey(order) {
+    const isDelivered = ((order.display_status || order.status_code || '').toString().toLowerCase().trim() === 'delivered');
+    let rawDate = null;
+    if (isDelivered) {
+      rawDate = order.shipment?.order_delivered_at || order.order_delivered_at || order.shipment?.delivered_at || order.delivered_at;
+    }
+    if (!rawDate) {
+      rawDate = order.order_created_at || order.created_at;
+    }
+    if (!rawDate) return null;
+    if (typeof rawDate === 'string') {
+      if (!rawDate.includes('T')) rawDate = rawDate.replace(' ', 'T');
+      if (!rawDate.endsWith('Z') && !rawDate.includes('+')) rawDate += '+03:00';
+    }
+    const d = new Date(rawDate);
+    if (isNaN(d.getTime())) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return {
+      dateKey: `${y}-${m}-${day}`,
+      timestamp: d.getTime(),
+      dayOfWeek: d.getDay()
+    };
+  }
+
   const updates = {};
   const dateCounts = {};
 
+  const uniqueOrders = new Map();
   for (const order of allOrders) {
-    let createdAt = order.order_created_at || "";
-    if (createdAt && !createdAt.includes('T')) createdAt = createdAt.replace(' ', 'T');
-    if (createdAt && !createdAt.endsWith('Z') && !createdAt.includes('+')) createdAt += '+03:00';
-    const d = new Date(createdAt);
-    if (!isNaN(d.getTime())) {
-      // Skip Friday (day 5)
-      if (d.getDay() === 5) continue;
+    const rawId = order.order_id || order.id || order.order_alias || '';
+    if (!rawId) continue;
+    const idKey = String(rawId).trim();
+    if (!uniqueOrders.has(idKey)) {
+      uniqueOrders.set(idKey, order);
+    } else {
+      const existing = uniqueOrders.get(idKey);
+      const isCurDel = ((order.display_status || order.status_code || '').toString().toLowerCase().trim() === 'delivered');
+      const isPrevDel = ((existing.display_status || existing.status_code || '').toString().toLowerCase().trim() === 'delivered');
+      if (isCurDel && !isPrevDel) {
+        uniqueOrders.set(idKey, order);
+      }
+    }
+  }
 
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const dateKey = `${year}-${month}-${day}`;
+  for (const order of uniqueOrders.values()) {
+    const dateInfo = extractOrderDateKey(order);
+    if (dateInfo) {
+      if (dateInfo.dayOfWeek === 5) continue; // Skip Friday
+      const dateKey = dateInfo.dateKey;
       const rawId = order.order_id || order.id || order.order_alias || '';
       const orderId = String(rawId).replace(/[.#$/[\]]/g, '_');
       if (orderId) {

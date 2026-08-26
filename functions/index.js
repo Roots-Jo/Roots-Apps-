@@ -465,9 +465,26 @@ async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes 
   });
 
   const results = await Promise.all(sellerFetchPromises);
-  for (const res of results) {
-    allOrders.push(...res);
+  const uniqueOrdersMap = new Map();
+  for (const sellerOrders of results) {
+    for (const order of sellerOrders) {
+      const rawId = order.order_id || order.id || order.order_alias || '';
+      if (!rawId) continue;
+      const idKey = String(rawId).trim();
+      if (!uniqueOrdersMap.has(idKey)) {
+        uniqueOrdersMap.set(idKey, order);
+      } else {
+        const existing = uniqueOrdersMap.get(idKey);
+        const isCurDel = ((order.display_status || order.status_code || '').toString().toLowerCase().trim() === 'delivered');
+        const isPrevDel = ((existing.display_status || existing.status_code || '').toString().toLowerCase().trim() === 'delivered');
+        if (isCurDel && !isPrevDel) {
+          uniqueOrdersMap.set(idKey, order);
+        }
+      }
+    }
   }
+
+  allOrders = Array.from(uniqueOrdersMap.values());
 
   // Save each order into Firebase Realtime Database partitioned by dateKey (YYYY-MM-DD)
   // Store under `cod_daily_orders/${dateKey}/${orderId}`

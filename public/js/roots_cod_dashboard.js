@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tableHead = document.getElementById('table-head');
     const tableBody = document.getElementById('table-body');
     const exportBtn = document.getElementById('export-btn');
+    const exportOrdersBtn = document.getElementById('export-orders-btn');
     const sellersToggle = document.getElementById('sellers-toggle');
     const sellersToggleText = document.getElementById('sellers-toggle-text');
     const emptyState = document.getElementById('empty-state');
@@ -242,17 +243,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const dailyOrdersRef = ref(db, 'cod_daily_orders');
     onValue(dailyOrdersRef, (snap) => {
         const dailyData = snap.val() || {};
-        const allOrders = [];
+        const ordersMap = new Map();
 
         // Sort date keys descending (newest dates first)
         Object.keys(dailyData).sort().reverse().forEach(dateKey => {
             const dayOrdersMap = dailyData[dateKey] || {};
             Object.values(dayOrdersMap).forEach(order => {
-                order._dateKey = dateKey;
-                allOrders.push(order);
+                const rawId = order.order_id || order.id || order.order_alias;
+                if (!rawId) return;
+                const idKey = String(rawId).trim();
+                if (!ordersMap.has(idKey)) {
+                    order._dateKey = dateKey;
+                    ordersMap.set(idKey, order);
+                } else {
+                    // If existing order isn't marked delivered but this one is, update to the delivered version
+                    const existing = ordersMap.get(idKey);
+                    const isCurDel = ((order.display_status || order.status_code || '').toString().toLowerCase().trim() === 'delivered');
+                    const isPrevDel = ((existing.display_status || existing.status_code || '').toString().toLowerCase().trim() === 'delivered');
+                    if (isCurDel && !isPrevDel) {
+                        order._dateKey = dateKey;
+                        ordersMap.set(idKey, order);
+                    }
+                }
             });
         });
 
+        const allOrders = Array.from(ordersMap.values());
         apiOrders = allOrders;
         ordersCurrentPage = 1;
 
@@ -266,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (allOrdersSection) allOrdersSection.classList.remove('hidden');
             if (tableContainerEl) tableContainerEl.classList.remove('hidden');
             if (exportBtn) exportBtn.classList.remove('hidden');
+            if (exportOrdersBtn) exportOrdersBtn.classList.remove('hidden');
 
             renderDeliveredSummary(apiOrders);
             updateOrdersFilterDropdownOptions(apiOrders);
@@ -282,6 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (allOrdersSection) allOrdersSection.classList.add('hidden');
             if (tableContainerEl) tableContainerEl.classList.add('hidden');
             if (exportBtn) exportBtn.classList.add('hidden');
+            if (exportOrdersBtn) exportOrdersBtn.classList.add('hidden');
         }
     });
 
@@ -690,6 +708,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function extractOrderDateInfo(originalOrder, flat) {
+        if (!flat) flat = flattenObject(originalOrder);
+        const isDelivered = ((originalOrder.display_status || originalOrder.status_code || flat.display_status || flat.status || '').toString().toLowerCase().trim() === 'delivered');
+
+        let dateInfo = null;
+        if (isDelivered) {
+            dateInfo = extractOrderDeliveredDate(originalOrder, flat);
+        }
+        if (!dateInfo) {
+            dateInfo = extractOrderCreatedDate(originalOrder, flat);
+        }
+        if (dateInfo) {
+            return {
+                ...dateInfo,
+                shortDate: dateInfo.displayDate
+            };
+        }
+
         if (originalOrder._dateKey && /^\d{4}-\d{2}-\d{2}$/.test(originalOrder._dateKey)) {
             const parts = originalOrder._dateKey.split('-');
             const y = parseInt(parts[0], 10);
@@ -708,61 +743,12 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
 
-        const isDelivered = ((originalOrder.display_status || originalOrder.status_code || flat.display_status || flat.status || '').toString().toLowerCase().trim() === 'delivered');
-        let rawDate = null;
-        if (isDelivered) {
-            rawDate = originalOrder.shipment?.order_delivered_at ||
-                originalOrder.order_delivered_at ||
-                originalOrder.shipment?.delivered_at ||
-                originalOrder.delivered_at ||
-                flat.shipment_order_delivered_at ||
-                flat.order_delivered_at ||
-                flat.shipment_delivered_at;
-        }
-        if (!rawDate) {
-            rawDate = originalOrder.order_created_at || originalOrder.created_at || flat.order_created_at || flat.created_at;
-        }
-        if (!rawDate) {
-            return {
-                dateKey: 'Unknown',
-                displayDate: 'Unknown',
-                shortDate: 'Unknown',
-                dayName: '-',
-                timestamp: 0
-            };
-        }
-
-        if (typeof rawDate === 'string') {
-            if (!rawDate.includes('T')) rawDate = rawDate.replace(' ', 'T');
-            if (!rawDate.endsWith('Z') && !rawDate.includes('+')) rawDate += '+03:00';
-        }
-
-        const d = new Date(rawDate);
-        if (isNaN(d.getTime())) {
-            return {
-                dateKey: 'Unknown',
-                displayDate: 'Unknown',
-                shortDate: 'Unknown',
-                dayName: '-',
-                timestamp: 0
-            };
-        }
-
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = d.getFullYear();
-
-        const dateKey = `${year}-${month}-${day}`;
-        const displayDate = `${day}/${month}/${year}`;
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayName = dayNames[d.getDay()];
-
         return {
-            dateKey,
-            displayDate,
-            shortDate: displayDate,
-            dayName,
-            timestamp: d.getTime()
+            dateKey: 'Unknown',
+            displayDate: 'Unknown',
+            shortDate: 'Unknown',
+            dayName: '-',
+            timestamp: 0
         };
     }
 
@@ -1464,6 +1450,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         receivedCodState[sKey] = { due: due };
                     }
                     receivedCodState[sKey].codFee = feeVal !== '' ? parseFloat(feeVal) : null;
+
+                    // Live update totals directly from columns
+                    updateSummaryTableTotalsFromDOM();
                 });
 
                 feeInp.addEventListener('change', async (e) => {
@@ -1522,6 +1511,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         receivedCodState[sKey] = { due: due };
                     }
                     receivedCodState[sKey].received = val !== '' ? parseFloat(val) : null;
+
+                    // Live update totals directly from columns
+                    updateSummaryTableTotalsFromDOM();
                 });
 
                 input.addEventListener('keydown', async (e) => {
@@ -1614,38 +1606,168 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             });
-        }
 
-        // Render Grand Total Footer
-        if (summaryFoot) {
-            const grandDueFormatted = grandTotalCollection.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
-            const grandExpectedFormatted = grandTotalExpected.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
-            const grandRecFormatted = grandTotalReceived.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
-            const grandDiff = grandHasAnyReceived ? grandTotalReceived - grandTotalExpected : 0;
-            const grandDiffFormatted = (grandDiff > 0 ? '+' : '') + grandDiff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
-            const grandDiffClass = checkNearestIntegerMatch(grandTotalExpected, grandTotalReceived) ? 'zero' : (grandDiff < 0 ? 'negative' : 'positive');
-            const grandMatch = grandHasAnyReceived && grandAllMatched && checkNearestIntegerMatch(grandTotalExpected, grandTotalReceived);
-
-            summaryFoot.innerHTML = `
-            <tr>
-                <td colspan="3" style="font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total (${visibleDateGroups.length} Days / ${totalRenderedPartners} Rows)</td>
-                <td style="text-align: right; font-weight: 800; color: var(--orange); font-size: 13px;">${grandDueFormatted} JOD</td>
-                <td style="text-align: center; font-weight: 800;">${grandTotalOrders}</td>
-                <td style="text-align: right; color: var(--muted); font-weight: 600;">-</td>
-                <td style="text-align: right; font-weight: 800; font-size: 13px;">${grandExpectedFormatted} JOD</td>
-                <td style="text-align: right; font-weight: 800; font-size: 13px;">${grandHasAnyReceived ? grandRecFormatted + ' JOD' : '-'}</td>
-                <td style="text-align: right; font-weight: 800; font-size: 13px;"><span class="diff-val ${grandDiffClass}">${grandHasAnyReceived ? grandDiffFormatted + ' JOD' : '-'}</span></td>
-                <td style="text-align: center;">
-                    <span class="badge-match ${grandMatch ? 'true' : 'false'}">${grandMatch ? 'True' : 'False'}</span>
-                </td>
-                <td></td>
-            </tr>
-        `;
+            // Recalculate and synchronize all column totals live from DOM
+            updateSummaryTableTotalsFromDOM();
         }
 
         renderSummaryPagination(totalRenderedPartners, visibleDateGroups.length);
 
         if (summarySection) summarySection.classList.remove('hidden');
+    }
+
+    function updateSummaryTableTotalsFromDOM() {
+        const summaryBody = document.getElementById('summary-table-body');
+        const summaryFoot = document.getElementById('summary-table-foot');
+        if (!summaryBody) return;
+
+        const subtotalRows = Array.from(summaryBody.querySelectorAll('tr.day-subtotal-row'));
+        const partnerRows = Array.from(summaryBody.querySelectorAll('tr.partner-row'));
+
+        const dateMap = new Map();
+        partnerRows.forEach(row => {
+            const dKey = row.getAttribute('data-date-key');
+            if (!dateMap.has(dKey)) dateMap.set(dKey, []);
+            dateMap.get(dKey).push(row);
+        });
+
+        let grandCollection = 0;
+        let grandOrders = 0;
+        let grandExpected = 0;
+        let grandReceived = 0;
+        let grandHasAnyReceived = false;
+        let grandAllMatched = partnerRows.length > 0;
+        let totalCountedPartners = 0;
+
+        subtotalRows.forEach(subRow => {
+            const dKey = subRow.getAttribute('data-date-key');
+            const rows = dateMap.get(dKey) || [];
+
+            let dayCollection = 0;
+            let dayOrders = 0;
+            let dayExpected = 0;
+            let dayReceived = 0;
+            let dayHasAnyRec = false;
+            let dayAllMatched = rows.length > 0;
+
+            rows.forEach(row => {
+                const dueAttr = row.querySelector('.btn-lock-cod')?.getAttribute('data-due') || 
+                                row.querySelector('.cod-fee-input')?.getAttribute('data-due') || 
+                                row.querySelector('.received-cod-input')?.getAttribute('data-due');
+                let rowDue = parseFloat(dueAttr);
+                if (isNaN(rowDue)) {
+                    const dueText = row.cells[3]?.textContent.replace(/[^\d.-]/g, '') || '0';
+                    rowDue = parseFloat(dueText) || 0;
+                }
+
+                const countAttr = row.querySelector('.cod-fee-input')?.getAttribute('data-count');
+                let rowCount = parseInt(countAttr, 10);
+                if (isNaN(rowCount)) {
+                    const countText = row.cells[4]?.textContent.trim() || '0';
+                    rowCount = parseInt(countText, 10) || 0;
+                }
+
+                const feeInp = row.querySelector('.cod-fee-input');
+                const feeVal = feeInp ? feeInp.value.trim() : '';
+                const feeNum = (feeVal !== '' && !isNaN(parseFloat(feeVal))) ? parseFloat(feeVal) : 0;
+                const totalFee = feeNum * rowCount;
+
+                const rowExpected = rowDue - totalFee;
+                const expectedCell = row.querySelector('.expected-cell');
+                if (expectedCell) {
+                    expectedCell.textContent = rowExpected.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' JOD';
+                }
+
+                const recInp = row.querySelector('.received-cod-input');
+                const recVal = recInp ? recInp.value.trim() : '';
+                const hasRec = recVal !== '' && !isNaN(parseFloat(recVal));
+                const recNum = hasRec ? parseFloat(recVal) : null;
+
+                const isMatch = hasRec && checkNearestIntegerMatch(rowExpected, recNum);
+                const diff = hasRec ? recNum - rowExpected : null;
+
+                const matchCell = row.querySelector('.match-cell');
+                const diffCell = row.querySelector('.diff-cell');
+                if (matchCell) {
+                    matchCell.innerHTML = `<span class="badge-match ${isMatch ? 'true' : 'false'}">${isMatch ? 'True' : 'False'}</span>`;
+                }
+                if (diffCell) {
+                    const dFmt = hasRec ? (diff > 0 ? '+' : '') + diff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' JOD' : '-';
+                    const dCls = hasRec ? (isMatch ? 'zero' : (diff < 0 ? 'negative' : 'positive')) : '';
+                    diffCell.innerHTML = `<span class="diff-val ${dCls}">${dFmt}</span>`;
+                }
+
+                dayCollection += rowDue;
+                dayOrders += rowCount;
+                dayExpected += rowExpected;
+                if (hasRec) {
+                    dayHasAnyRec = true;
+                    dayReceived += recNum;
+                    if (!isMatch) dayAllMatched = false;
+                } else {
+                    dayAllMatched = false;
+                }
+                totalCountedPartners++;
+            });
+
+            const dayDiff = dayHasAnyRec ? dayReceived - dayExpected : null;
+            const dayMatch = dayHasAnyRec && dayAllMatched && checkNearestIntegerMatch(dayExpected, dayReceived);
+
+            const dayDueCell = subRow.cells[3];
+            const dayOrdersCell = subRow.cells[4];
+            const dayExpectedCell = subRow.querySelector('.day-expected-cell');
+            const dayReceivedCell = subRow.querySelector('.day-received-cell');
+            const dayDiffCell = subRow.querySelector('.day-diff-cell');
+            const dayMatchCell = subRow.querySelector('.day-match-cell');
+
+            if (dayDueCell) dayDueCell.textContent = dayCollection.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' JOD';
+            if (dayOrdersCell) dayOrdersCell.textContent = String(dayOrders);
+            if (dayExpectedCell) dayExpectedCell.textContent = dayExpected.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' JOD';
+            if (dayReceivedCell) dayReceivedCell.textContent = dayHasAnyRec ? dayReceived.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' JOD' : '-';
+            if (dayDiffCell) {
+                const dayDiffFmt = dayHasAnyRec ? (dayDiff > 0 ? '+' : '') + dayDiff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' JOD' : '-';
+                const dayDiffCls = dayHasAnyRec ? (checkNearestIntegerMatch(dayExpected, dayReceived) ? 'zero' : (dayDiff < 0 ? 'negative' : 'positive')) : '';
+                dayDiffCell.innerHTML = `<span class="diff-val ${dayDiffCls}">${dayDiffFmt}</span>`;
+            }
+            if (dayMatchCell) {
+                dayMatchCell.innerHTML = `<span class="badge-match ${dayMatch ? 'true' : 'false'}">${dayMatch ? 'True' : 'False'}</span>`;
+            }
+
+            grandCollection += dayCollection;
+            grandOrders += dayOrders;
+            grandExpected += dayExpected;
+            if (dayHasAnyRec) {
+                grandHasAnyReceived = true;
+                grandReceived += dayReceived;
+                if (!dayMatch) grandAllMatched = false;
+            } else {
+                grandAllMatched = false;
+            }
+        });
+
+        if (summaryFoot) {
+            const grandDiff = grandHasAnyReceived ? grandReceived - grandExpected : 0;
+            const grandDiffFmt = (grandDiff > 0 ? '+' : '') + grandDiff.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+            const grandDiffCls = checkNearestIntegerMatch(grandExpected, grandReceived) ? 'zero' : (grandDiff < 0 ? 'negative' : 'positive');
+            const grandMatch = grandHasAnyReceived && grandAllMatched && checkNearestIntegerMatch(grandExpected, grandReceived);
+
+            const totalDays = subtotalRows.length;
+            summaryFoot.innerHTML = `
+            <tr>
+                <td colspan="3" style="font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total (${totalDays} Days / ${totalCountedPartners} Rows)</td>
+                <td style="text-align: right; font-weight: 800; color: var(--orange); font-size: 13px;">${grandCollection.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} JOD</td>
+                <td style="text-align: center; font-weight: 800;">${grandOrders}</td>
+                <td style="text-align: right; color: var(--muted); font-weight: 600;">-</td>
+                <td style="text-align: right; font-weight: 800; font-size: 13px;">${grandExpected.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} JOD</td>
+                <td style="text-align: right; font-weight: 800; font-size: 13px;">${grandHasAnyReceived ? grandReceived.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' JOD' : '-'}</td>
+                <td style="text-align: right; font-weight: 800; font-size: 13px;"><span class="diff-val ${grandDiffCls}">${grandHasAnyReceived ? grandDiffFmt + ' JOD' : '-'}</span></td>
+                <td style="text-align: center;">
+                    <span class="badge-match ${grandMatch ? 'true' : 'false'}">${grandMatch ? 'True' : 'False'}</span>
+                </td>
+                <td></td>
+            </tr>
+            `;
+        }
     }
 
     function renderSummaryPagination(totalPartners, totalDates) {
@@ -2401,6 +2523,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (totalFiltered === 0) {
             tableBody.innerHTML = `<tr><td colspan="${headers.length}" style="text-align: center; color: var(--muted); padding: 32px; font-weight: 500;">No orders found matching the selected filters.</td></tr>`;
+            const ordersFoot = document.getElementById('orders-table-foot');
+            if (ordersFoot) ordersFoot.innerHTML = '';
             renderOrdersPagination(0);
             return;
         }
@@ -2429,16 +2553,83 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         tableBody.innerHTML = bodyHtml;
 
+        // Update All Orders Table Footer with column totals directly from currentFilteredOrders
+        const ordersFoot = document.getElementById('orders-table-foot');
+        if (ordersFoot) {
+            let totalInvoice = 0;
+            let totalDue = 0;
+            currentFilteredOrders.forEach(o => {
+                const flat = flattenObject(o);
+                totalInvoice += extractOrderInvoiceTotal(o, flat);
+                totalDue += extractOrderTotalDue(o, flat);
+            });
+
+            ordersFoot.innerHTML = `
+            <tr>
+                <td colspan="5" style="font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Grand Total (${totalFiltered} Orders)</td>
+                <td style="text-align: right; font-weight: 800; font-size: 13px;">${totalInvoice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} JOD</td>
+                <td style="text-align: right; font-weight: 800; color: var(--orange); font-size: 13px;">${totalDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} JOD</td>
+                <td colspan="4"></td>
+            </tr>
+            `;
+        }
+
         renderOrdersPagination(totalFiltered);
     }
 
-    exportBtn.addEventListener('click', () => {
+    // Export to Excel handler for All Orders table
+    exportOrdersBtn?.addEventListener('click', () => {
+        const exportOrders = (currentFilteredOrders && currentFilteredOrders.length > 0) ? currentFilteredOrders : (apiOrders && apiOrders.length > 0 ? getFilteredOrders() : []);
+        if (!exportOrders || exportOrders.length === 0) {
+            alert('No orders available to export.');
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+
+        const dataForExcel = exportOrders.map(originalOrder => {
+            const flat = flattenObject(originalOrder);
+            const row = {};
+            headers.forEach(header => {
+                const label = headerDisplayNames[header] || header;
+                let val = getOrderFieldValue(header, originalOrder, flat);
+                if (header === 'invoice_total' || header === 'invoice_total_due') {
+                    const num = parseFloat(val);
+                    val = (!isNaN(num) && val !== '') ? Number(num.toFixed(3)) : val;
+                }
+                row[label] = val;
+            });
+            return row;
+        });
+
+        const wsOrders = XLSX.utils.json_to_sheet(dataForExcel);
+
+        // Auto-fit column widths
+        const colWidths = headers.map(header => {
+            const label = headerDisplayNames[header] || header;
+            let maxLen = label.length;
+            dataForExcel.forEach(r => {
+                const cellVal = r[label] !== undefined && r[label] !== null ? String(r[label]) : '';
+                if (cellVal.length > maxLen) maxLen = Math.min(cellVal.length, 50);
+            });
+            return { wch: Math.max(maxLen + 3, 12) };
+        });
+        wsOrders['!cols'] = colWidths;
+
+        XLSX.utils.book_append_sheet(wb, wsOrders, "All COD Orders");
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `Roots_COD_All_Orders_${todayStr}.xlsx`);
+    });
+
+    // Export to Excel handler for Summary & Combined view
+    exportBtn?.addEventListener('click', () => {
         if (!apiOrders || apiOrders.length === 0) return;
 
         const wb = XLSX.utils.book_new();
 
-        // Sheet 1: Delivered Summary with new 11-column template
-        const { dates } = getDeliveredSummaryData(apiOrders);
+        // Sheet 1: Delivered Summary with 11-column template
+        const { dates } = getDeliveredSummaryData(apiOrders, filterStore);
         if (dates.length > 0) {
             const summaryExcelData = [];
 
@@ -2523,14 +2714,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = {};
             headers.forEach(header => {
                 const label = headerDisplayNames[header] || header;
-                row[label] = getOrderFieldValue(header, originalOrder, flat);
+                let val = getOrderFieldValue(header, originalOrder, flat);
+                if (header === 'invoice_total' || header === 'invoice_total_due') {
+                    const num = parseFloat(val);
+                    val = (!isNaN(num) && val !== '') ? Number(num.toFixed(3)) : val;
+                }
+                row[label] = val;
             });
             return row;
         });
 
         const wsOrders = XLSX.utils.json_to_sheet(dataForExcel);
+
+        // Auto-fit column widths
+        const colWidths = headers.map(header => {
+            const label = headerDisplayNames[header] || header;
+            let maxLen = label.length;
+            dataForExcel.forEach(r => {
+                const cellVal = r[label] !== undefined && r[label] !== null ? String(r[label]) : '';
+                if (cellVal.length > maxLen) maxLen = Math.min(cellVal.length, 50);
+            });
+            return { wch: Math.max(maxLen + 3, 12) };
+        });
+        wsOrders['!cols'] = colWidths;
+
         XLSX.utils.book_append_sheet(wb, wsOrders, "All COD Orders");
 
-        XLSX.writeFile(wb, `Roots_COD_Summary_${new Date().getTime()}.xlsx`);
+        const todayStr = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `Roots_COD_Summary_${todayStr}.xlsx`);
     });
 });

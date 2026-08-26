@@ -689,7 +689,8 @@ tbody tr:last-child td {
     background: var(--bg);
 }
 
-#summary-table tfoot tr td {
+#summary-table tfoot tr td,
+#orders-table tfoot tr td {
     background: var(--bg);
     font-weight: 700;
     border-top: 2px solid var(--bdr);
