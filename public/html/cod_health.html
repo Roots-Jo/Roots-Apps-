@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="codh_title">Roots COD Reconciliation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/index.css?v=2.0.1">
+    <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
+    <link rel="stylesheet" href="../css/orders.css?v=2.1.1">
+    <link rel="stylesheet" href="/css/cod_health.css?v=1.0.0">
+    <script type="module" src="/js/auth.js"></script>
+    <script>if (localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');</script>
+    <script src="/js/arabic.js?v=4"></script>
+</head>
+
+<body>
+
+    <div id="navbar"></div>
+    <script src="/js/navbar.js?v=1.0.7"></script>
+
+    <nav class="orders-nav"
+        style="width: 100%; border-bottom: 1px solid var(--border); margin-bottom: 0; background: var(--bg);">
+        <div class="nav-content" style="display: flex; justify-content: center; padding: 0 20px;">
+            <div class="nav-links" style="display: flex; gap: 2rem; padding-top: 10px;">
+                <a href="/roots_cod_dashboard" class="nav-link"
+                    style="color: var(--muted); font-weight: 600; text-decoration: none; padding-bottom: 4px;"
+                    data-i18n="codh_nav_orders">COD Orders</a>
+                <a href="/cod_health" class="nav-link"
+                    style="color: var(--orange); font-weight: 600; text-decoration: none; border-bottom: 3px solid var(--orange); padding-bottom: 4px;"
+                    data-i18n="codh_nav_health">COD Reconciliation</a>
+                <a href="/cod_operations" class="nav-link"
+                    style="color: var(--muted); font-weight: 600; text-decoration: none; padding-bottom: 4px;"
+                    data-i18n="codh_nav_ops">Operations Health</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <main class="page-card viz-root">
+
+            <div id="codh-loading" class="empty-state">
+                <h3 data-i18n="codh_loading_title">Loading COD Reconciliation…</h3>
+                <p data-i18n="codh_loading_text">Reading saved orders and reconciliation records.</p>
+            </div>
+
+            <div id="codh-content" class="hidden">
+
+                <!-- One filter row, scoping everything below it -->
+                <div class="summary-filters-bar" id="codh-filters">
+                    <div class="summary-filters-left">
+                        <div class="filter-item">
+                            <label for="codh-date" class="filter-label" data-i18n="codh_f_date">Business Day</label>
+                            <input type="date" id="codh-date" class="sbox filter-select">
+                        </div>
+                        <div class="filter-item">
+                            <label for="codh-basis" class="filter-label" data-i18n="codh_f_basis">Chart Basis</label>
+                            <select id="codh-basis" class="sbox filter-select">
+                                <option value="delivered" data-i18n="codh_basis_delivered">Delivered that day</option>
+                                <option value="shipped" data-i18n="codh_basis_shipped">Shipped that day</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="codh-seller" class="filter-label" data-i18n="codh_f_seller">Seller</label>
+                            <select id="codh-seller" class="sbox filter-select">
+                                <option value="all" data-i18n="codh_seller_all">All sellers</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="codh-tag" class="filter-label" data-i18n="codh_f_tag">Tag / Label</label>
+                            <select id="codh-tag" class="sbox filter-select">
+                                <option value="all" data-i18n="codh_tag_all">All tags</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="codh-window" class="filter-label" data-i18n="codh_f_window">Health Window
+                                (days)</label>
+                            <input type="number" id="codh-window" class="sbox filter-select" min="1" max="365" step="1"
+                                value="30" inputmode="numeric">
+                        </div>
+                    </div>
+                    <div class="summary-filters-right">
+                        <button type="button" id="codh-reset" class="btn-reset-filters" data-i18n="codh_reset">Reset
+                            Filters</button>
+                    </div>
+                </div>
+
+                <!-- ── Health indicators ── -->
+                <div class="table-section-title" style="margin-top: 1.25rem;">
+                    <div class="section-title-left">
+                        <span data-i18n="codh_indicators">Health Indicators</span>
+                    </div>
+                    <div class="section-title-right">
+                        <span class="codh-asof" id="codh-asof"></span>
+                    </div>
+                </div>
+
+                <div class="codh-key" id="codh-key">
+                    <span class="codh-key-item"><span class="codh-lamp codh-lamp-sm good"
+                            aria-hidden="true">✓</span><span data-i18n="codh_key_good">Healthy — within
+                            target</span></span>
+                    <span class="codh-key-item"><span class="codh-lamp codh-lamp-sm warning"
+                            aria-hidden="true">!</span><span data-i18n="codh_key_warning">Needs attention — drifting
+                            off target</span></span>
+                    <span class="codh-key-item"><span class="codh-lamp codh-lamp-sm critical"
+                            aria-hidden="true">✕</span><span data-i18n="codh_key_critical">Critical — act
+                            today</span></span>
+                </div>
+
+                <div class="codh-tiles" id="codh-tiles" role="list">
+                    <!-- injected -->
+                </div>
+
+                <div class="codh-drill hidden" id="codh-drill">
+                    <div class="codh-drill-head">
+                        <strong id="codh-drill-title"></strong>
+                        <button type="button" class="codh-drill-close" id="codh-drill-close" aria-label="Close">✕</button>
+                    </div>
+                    <div class="table-container">
+                        <table id="codh-drill-table">
+                            <thead id="codh-drill-head"></thead>
+                            <tbody id="codh-drill-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── COD by courier ── -->
+                <div class="table-section-title" style="margin-top: 2rem;">
+                    <div class="section-title-left">
+                        <span id="codh-chart-title" data-i18n="codh_chart_title">COD by Courier</span>
+                    </div>
+                    <div class="section-title-right" style="display: flex; gap: 0.75rem; align-items: center;">
+                        <button type="button" id="codh-view-toggle" class="btn-toggle-collapse"
+                            data-i18n="codh_view_table">Table view</button>
+                    </div>
+                </div>
+
+                <figure class="codh-figure" id="codh-figure">
+                    <figcaption class="codh-figcaption" id="codh-figcaption"></figcaption>
+                    <div class="codh-legend" id="codh-legend"></div>
+                    <div class="codh-chart-wrap">
+                        <div id="codh-chart" class="codh-chart"></div>
+                        <div id="codh-tooltip" class="codh-tooltip" hidden></div>
+                    </div>
+                </figure>
+
+                <div class="table-container hidden" id="codh-chart-table-wrap" style="margin-top: 0.5rem;">
+                    <table id="codh-chart-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="codh_th_courier">Courier</th>
+                                <th style="text-align: center;" data-i18n="codh_th_orders">Orders</th>
+                                <th style="text-align: right;" data-i18n="codh_th_expected">COD Expected (JOD)</th>
+                                <th style="text-align: right;" data-i18n="codh_th_received">COD Received (JOD)</th>
+                                <th style="text-align: right;" data-i18n="codh_th_diff">Difference (JOD)</th>
+                                <th style="text-align: center;" data-i18n="codh_th_match">Reconciled</th>
+                            </tr>
+                        </thead>
+                        <tbody id="codh-chart-table-body"></tbody>
+                        <tfoot id="codh-chart-table-foot"></tfoot>
+                    </table>
+                </div>
+
+                <!-- ── COD per delivery day ── -->
+                <div class="table-section-title" style="margin-top: 2rem;">
+                    <div class="section-title-left">
+                        <span data-i18n="codh_daily_title">COD by Delivery Day</span>
+                    </div>
+                </div>
+
+                <figure class="codh-figure" id="codh-daily-figure">
+                    <figcaption class="codh-figcaption" id="codh-daily-figcaption"></figcaption>
+                    <div class="codh-legend" id="codh-daily-legend"></div>
+                    <div class="codh-chart-wrap">
+                        <div id="codh-daily-chart" class="codh-chart"></div>
+                        <div id="codh-daily-tooltip" class="codh-tooltip" hidden></div>
+                    </div>
+                </figure>
+
+                <p class="codh-note" id="codh-freshness-note"></p>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="/js/cod_health.js?v=1.0.0"></script>
+
+</body>
+
+</html>

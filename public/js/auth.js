@@ -11,7 +11,9 @@
   // Determine current app ID
   const path = window.location.pathname;
   let appId = "";
-  if (path.includes("roots_cod_dashboard")) appId = "roots_cod_dashboard";
+  // The COD Health page is a sub-page of the COD dashboard, so it rides on the same
+  // permission rather than needing its own grant.
+  if (path.includes("roots_cod_dashboard") || path.includes("cod_health") || path.includes("cod_operations")) appId = "roots_cod_dashboard";
   else if (path.includes("pickup_tracker")) appId = "pickup_tracker";
   else if (path.includes("cases_tracker")) appId = "cases_tracker";
   else if (path.includes("admin")) appId = "admin";

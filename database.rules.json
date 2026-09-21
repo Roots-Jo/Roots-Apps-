@@ -1,0 +1,30 @@
+{
+  /*
+   * RTDB rules cascade downward: granting .read/.write at a level also grants it to every
+   * child, and a deeper rule CANNOT revoke it. So there is deliberately no rule at the root —
+   * access is granted per top-level path instead, which is what lets system_config stay
+   * private while the app paths remain open.
+   *
+   * These apps do not use Firebase Auth (login is a plaintext password compare in the client
+   * against /users), so the application paths below must stay open or every app breaks.
+   * That is a known gap, not an endorsement: /users holds plaintext passwords and is world
+   * readable. Closing it properly requires migrating the login flow to Firebase Auth.
+   *
+   * The Admin SDK used by Cloud Functions bypasses these rules, so the functions can still
+   * read and write system_config/omniful_auth normally.
+   */
+  "rules": {
+    "system_config": {
+      ".read": false,
+      ".write": false
+    },
+
+    "users":              { ".read": true, ".write": true },
+    "cod_daily_orders":   { ".read": true, ".write": true },
+    "cod_reconciliation": { ".read": true, ".write": true },
+    "cases_tracker":      { ".read": true, ".write": true },
+    "shifts":             { ".read": true, ".write": true },
+    "collection_tracker": { ".read": true, ".write": true },
+    "trackers":           { ".read": true, ".write": true }
+  }
+}

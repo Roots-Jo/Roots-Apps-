@@ -173,7 +173,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const allMappings = [...baseMappings, ...customMappings];
             if (window.allDeliveries) {
                 window.allDeliveries.forEach(del => {
-                    const searchString = normalizeArabic(`${del.billing_address_city || ''} ${del.billing_address_address1 || ''}`.toLowerCase());
+                    // Shipping only — the inline fallback that used to sit here reintroduced
+                    // billing on this one path, so a delivery could re-map against a different
+                    // address than the one the deliveries table was showing.
+                    const addr = window.deliveryAddrField || ((r, f) => r['shipping_address_' + f] || '');
+                    const searchString = normalizeArabic(`${addr(del, 'city')} ${addr(del, 'address1')}`.toLowerCase());
                     for (const m of allMappings) {
                         if (searchString.includes(normalizeArabic(m.keyword.toLowerCase()))) {
                             del.mapped_area = m.area;

@@ -6,18 +6,303 @@ const axios = require("axios");
 const cors = require("cors")({ origin: true });
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { initializeApp, getApps } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
+const { getFirestore } = require("firebase-admin/firestore");
 
 const adminApp = !getApps().length ? initializeApp({
   databaseURL: "https://roots-weekly-default-rtdb.europe-west1.firebasedatabase.app"
 }) : getApps()[0];
 const db = getDatabase(adminApp);
+const firestore = getFirestore(adminApp);
 
-// Using standard Firebase config to hide secrets, but for this example,
-// we will load it from process.env if available. 
-// IN PRODUCTION: Use Firebase Secret Manager for OMNIFUL_API_TOKEN.
 require("dotenv").config();
+
+// ==========================================
+// Omniful Authentication Module (read-only consumer — see the contract below)
+// ==========================================
+// OMNIFUL_CLIENT_ID and OMNIFUL_CLIENT_SECRET are deliberately absent: they exist only to mint
+// tokens, which this app must never do. Leaving them unread means the minting credentials can
+// be removed from this app's .env entirely, so the rule is enforced by what is deployed and
+// not only by what the code happens to call.
+let memoryTokens = {
+  accessToken: process.env.OMNIFUL_API_TOKEN || process.env.OMNIFUL_ACCESS_TOKEN || "",
+  // Kept only so the health endpoint can report when the shared pair is next due for rotation.
+  refreshToken: process.env.OMNIFUL_REFRESH_TOKEN || "",
+  baseUrl: (process.env.OMNIFUL_BASE_URL || "https://prodapi.omniful.com").replace(/\/+$/, "")
+};
+
+// ==========================================================================================
+// This app is a CONSUMER of the Omniful credentials, never a minter of them
+// ==========================================================================================
+// The same Omniful credential pair is shared with the LogesTechs bridge. Omniful's grant
+// endpoint mints a new access token and invalidates the previous one FOR EVERY HOLDER, not
+// just for the caller — so whenever either app refreshed, the other app's token died
+// instantly and somebody had to paste a new one in by hand.
+//
+// No amount of locking inside this app can fix that, because the other app is a separate
+// codebase that cannot join our lease. Rotation therefore has exactly one owner, and it is
+// not us: it is the manual script in the bridge repo, python/scripts/rotate_omniful_tokens.py,
+// run inside the last 5 days of the access token's 30-day life.
+//
+// The rules here follow from that:
+//   * No code path in this file may ever call the Omniful token endpoint. Not a 401 handler,
+//     not a retry wrapper, not a scheduled warm-up. If you are about to add one, don't — you
+//     will break the bridge and every dashboard it feeds.
+//   * Firestore logestechs_config/omniful_auth is the source of truth. The bridge writes it on
+//     every deliberate rotation; we only ever read it. .env is a cold-start fallback for when
+//     Firestore cannot be reached.
+//   * A 401 means re-read the shared token in case a rotation just happened, then retry once.
+//     If the token is demonstrably still alive, the 401 is a PERMISSIONS verdict — typically a
+//     request against a seller code this tenant does not own — and no token change can fix it.
+//     That case produced 14 rotations from a single status update before this was understood.
+// ==========================================================================================
+
+const AUTH_DOC = ["logestechs_config", "omniful_auth"];
+const authDoc = () => firestore.collection(AUTH_DOC[0]).doc(AUTH_DOC[1]);
+
+// How long a shared-token read is cached before a 401 is allowed to trigger another one. The
+// bridge rotates roughly monthly, so re-reading more often than this buys nothing and would
+// turn a burst of permission 401s into a burst of Firestore reads.
+const SHARED_TOKEN_MIN_REFETCH_MS = 30 * 1000;
+
+// Only a hash is ever logged — the token itself never leaves this process.
+function fingerprintToken(token) {
+  if (!token) return "";
+  return crypto.createHash("sha256").update(token).digest("hex").slice(0, 16);
+}
+
+
+// Raised when Omniful rejects our credentials. Callers must surface this rather than
+// treating it as "no data" — a silently empty result made a token outage invisible before.
+class OmnifulAuthError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "OmnifulAuthError";
+    this.isAuthError = true;
+  }
+}
+
+function parseJwtExp(token) {
+  try {
+    if (!token || typeof token !== "string") return 0;
+    const parts = token.split(".");
+    if (parts.length < 2) return 0;
+    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
+    return (payload.exp || 0) * 1000;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function isTokenExpired(token) {
+  const exp = parseJwtExp(token);
+  if (!exp) return false;
+  // Proactively treat token as expired 5 minutes before actual expiry
+  return Date.now() >= (exp - 5 * 60 * 1000);
+}
+
+// Reads the shared access token from Firestore, which the bridge's rotation script writes.
+// This is the ONLY place the token comes from in steady state; .env is a fallback for a cold
+// start that cannot reach Firestore. Nothing here ever writes the document — the bridge owns
+// it, and a write from this side would clobber a rotation it had just performed.
+let sharedTokenFetchedAt = 0;
+let sharedTokenLoadPromise = null;
+// Whether the token currently in memory actually came from the shared document. Reported by
+// the health endpoint, because "running on the .env fallback" and "running on the shared
+// record" fail in completely different ways at the next rotation.
+let sharedTokenIsAuthoritative = false;
+
+async function readSharedToken() {
+  try {
+    const doc = await authDoc().get();
+    if (!doc.exists) {
+      logger.warn(`[OmnifulAuth] ${AUTH_DOC[0]}/${AUTH_DOC[1]} does not exist. Falling back to the token in .env.`);
+      return null;
+    }
+    const data = doc.data() || {};
+    if (!data.access_token) {
+      logger.warn(`[OmnifulAuth] ${AUTH_DOC[0]}/${AUTH_DOC[1]} has no access_token field. Falling back to the token in .env.`);
+      return null;
+    }
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || "",
+      updatedAt: data.updated_at || null
+    };
+  } catch (err) {
+    logger.warn(`[OmnifulAuth] Could not read the shared token from Firestore: ${err.message}. Falling back to the token in .env.`);
+    return null;
+  }
+}
+
+// Pulls the shared token into memory. Concurrent callers share one read: the promise is
+// assigned before the first await, so a fan-out cannot slip past a half-finished load and
+// carry on with a stale token (which is how six sellers used to produce six 401s at midnight).
+function loadSharedToken({ force = false } = {}) {
+  if (sharedTokenLoadPromise) return sharedTokenLoadPromise;
+
+  if (!force && sharedTokenFetchedAt && (Date.now() - sharedTokenFetchedAt) < SHARED_TOKEN_MIN_REFETCH_MS) {
+    return Promise.resolve(false);
+  }
+
+  sharedTokenLoadPromise = (async () => {
+    const shared = await readSharedToken();
+    sharedTokenFetchedAt = Date.now();
+    if (!shared) {
+      sharedTokenIsAuthoritative = false;
+      return false;
+    }
+    sharedTokenIsAuthoritative = true;
+
+    const changed = shared.accessToken !== memoryTokens.accessToken;
+    memoryTokens.accessToken = shared.accessToken;
+    if (shared.refreshToken) memoryTokens.refreshToken = shared.refreshToken;
+
+    if (changed) {
+      logger.info(`[OmnifulAuth] Loaded the shared access token ${fingerprintToken(shared.accessToken)} from Firestore (rotated ${shared.updatedAt || "at an unrecorded time"}).`);
+    }
+    return changed;
+  })().finally(() => {
+    sharedTokenLoadPromise = null;
+  });
+
+  return sharedTokenLoadPromise;
+}
+
+function tokenLifetimeDescription(token) {
+  const exp = parseJwtExp(token);
+  if (!exp) return "an unknown remaining lifetime";
+  const ms = exp - Date.now();
+  if (ms <= 0) return "an expiry that has already passed";
+  const days = ms / 86400000;
+  return days >= 1 ? `${days.toFixed(1)} days left` : `${(ms / 3600000).toFixed(1)} hours left`;
+}
+
+async function getOmnifulAccessToken() {
+  await loadSharedToken();
+
+  if (!memoryTokens.accessToken) {
+    throw new OmnifulAuthError(`No Omniful access token is available. ${AUTH_DOC[0]}/${AUTH_DOC[1]} could not be read and OMNIFUL_API_TOKEN is not set in functions/.env.`);
+  }
+
+  // Deliberately NOT refreshed when expired. Rotation belongs to the bridge; all we can do is
+  // say so loudly, because minting a token here would revoke the bridge's copy.
+  if (isTokenExpired(memoryTokens.accessToken)) {
+    logger.error(`[OmnifulAuth] The shared Omniful access token has expired (${tokenLifetimeDescription(memoryTokens.accessToken)}). This app does not rotate — run python/scripts/rotate_omniful_tokens.py in the bridge repo.`);
+  }
+
+  return memoryTokens.accessToken;
+}
+// endpoint, because a JWT's `exp` says nothing about server-side revocation.
+async function probeOmnifulToken(token) {
+  try {
+    await axios.get(`${memoryTokens.baseUrl}/sales-channel/public/v1/tenants/sellers`, {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      params: { page: 1, per_page: 1 },
+      timeout: 10000
+    });
+    return { ok: true, status: 200 };
+  } catch (err) {
+    return { ok: false, status: err.response ? err.response.status : "no response" };
+  }
+}
+
+function upstreamMessage(res) {
+  const body = res && res.data;
+  if (!body) return "no response body";
+  if (typeof body === "string") return body.slice(0, 300);
+  return (body.error?.message || body.error_description || body.message || JSON.stringify(body)).slice(0, 300);
+}
+
+// Raised when Omniful authenticated the token but refused this particular request. It is NOT
+// an auth error: no token change can fix it, so it must never reach a rotation path and must
+// not abort a whole multi-seller sync.
+class OmnifulPermissionError extends Error {
+  constructor(message, response) {
+    super(message);
+    this.name = "OmnifulPermissionError";
+    this.isPermissionError = true;
+    this.response = response;
+  }
+}
+
+// Executes Omniful HTTP requests with a per-attempt Bearer token, a re-read (never a rotation)
+// on 401, and 429 rate-limit backoff.
+async function omnifulRequest(config) {
+  config.headers = config.headers || {};
+  config.headers["Content-Type"] = config.headers["Content-Type"] || "application/json";
+
+  const maxAttempts = 3;
+  let attempt = 0;
+
+  while (attempt < maxAttempts) {
+    attempt++;
+
+    // Built fresh every attempt. A header captured once outside this loop keeps sending the
+    // replaced token after a rotation, so every retry 401s and asks for another rotation —
+    // one of the two amplifiers that turned a single status update into 14 rotations.
+    const token = await getOmnifulAccessToken();
+    config.headers["Authorization"] = `Bearer ${token}`;
+
+    try {
+      return await axios(config);
+    } catch (error) {
+      const status = error.response ? error.response.status : null;
+
+      if (status === 401 && attempt < maxAttempts) {
+        // Re-read the shared token in case the bridge rotated it a moment ago. This is the
+        // ONLY recovery available to us — minting a replacement here would revoke the copy
+        // the bridge and every other consumer are using.
+        logger.warn(`[OmnifulAuth] 401 from Omniful (attempt ${attempt}). Re-reading the shared token from Firestore; this app never rotates.`);
+        const changed = await loadSharedToken({ force: true });
+        if (changed) continue;
+
+        // The token did not change, so ask Omniful directly whether it still accepts it. If it
+        // does, this 401 was a permissions verdict on the specific resource — almost always a
+        // seller code this tenant does not own — and retrying or rotating cannot help.
+        const probe = await probeOmnifulToken(token);
+        if (probe.ok) {
+          throw new OmnifulPermissionError(
+            `Omniful returned 401 for ${config.url || "this request"} but still accepts the token (${tokenLifetimeDescription(token)}). This is a permissions problem with the requested resource, not an expired credential, so no rotation was attempted.`,
+            error.response
+          );
+        }
+
+        throw new OmnifulAuthError(
+          `Omniful rejected the shared access token (HTTP 401, ${tokenLifetimeDescription(token)}, fingerprint ${fingerprintToken(token)}). This app does not rotate — run python/scripts/rotate_omniful_tokens.py in the bridge repo, which updates ${AUTH_DOC[0]}/${AUTH_DOC[1]} for every consumer.`
+        );
+      }
+
+      if (status === 401) {
+        throw new OmnifulAuthError(
+          `Omniful rejected the shared access token (HTTP 401, ${tokenLifetimeDescription(token)}) after ${attempt} attempts. Rotation is owned by the bridge — run python/scripts/rotate_omniful_tokens.py there.`
+        );
+      }
+
+      // A 403 is a verdict on a token the server already authenticated, so it is the same class
+      // of problem as a permissions 401 and is reported the same way.
+      if (status === 403) {
+        const detail = error.response && error.response.data ? upstreamMessage(error.response) : "no detail";
+        throw new OmnifulPermissionError(
+          `Omniful refused this request (HTTP 403): ${detail}. The token was accepted but this tenant is not permitted to make the call, so no rotation was attempted.`,
+          error.response
+        );
+      }
+
+      if (status === 429 && attempt < maxAttempts) {
+        const retryAfterHeader = error.response.headers ? error.response.headers["retry-after"] : null;
+        const waitMs = Math.min((parseInt(retryAfterHeader, 10) || attempt * 2) * 1000, 5000);
+        logger.warn(`[OmnifulAuth] Rate limit (429) hit from Omniful. Waiting ${waitMs}ms before retry ${attempt}...`);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+}
 
 exports.getOrders = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
@@ -33,21 +318,12 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    const token = process.env.OMNIFUL_API_TOKEN;
-    if (!token) {
-      logger.error("Missing OMNIFUL_API_TOKEN environment variable.");
-      res.status(500).send({ data: { error: "Server Configuration Error" } });
-      return;
-    }
-    const baseUrl = "https://prodapi.omniful.com";
+    const baseUrl = memoryTokens.baseUrl;
     const defaultSellerCodes = ["SEM", "BAM", "JS", "AA", "HOJ", "JAT"];
     const sellerCodes = sellers && sellers.length > 0 ? sellers : defaultSellerCodes;
-    const headers = {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    };
 
     let allOrders = [];
+    const failedSellers = [];
 
     try {
       const sellerFetchPromises = sellerCodes.map(async (sellerCode) => {
@@ -66,7 +342,12 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
             const queryParams = { per_page: "100" };
             if (searchAfter) queryParams.search_after = searchAfter;
 
-            const response = await axios.get(fullUrl, { headers, params: queryParams, timeout: 15000 });
+            const response = await omnifulRequest({
+              method: "GET",
+              url: fullUrl,
+              params: queryParams,
+              timeout: 15000
+            });
             const orderData = response.data;
             const pageOrders = orderData.data || [];
 
@@ -106,7 +387,19 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
             if (!searchAfter) break;
           }
         } catch (sellerErr) {
+          // A permissions verdict means this tenant does not own this seller code. It is a
+          // property of the seller, not of the credentials, so it degrades to a failed seller
+          // rather than aborting — and above all it never reaches a rotation path.
+          if (sellerErr.isPermissionError) {
+            logger.warn(`[Omniful] Seller ${sellerCode} is not accessible to this tenant: ${sellerErr.message}`);
+            failedSellers.push(sellerCode);
+            return sellerOrders;
+          }
           logger.error(`Error fetching orders for seller ${sellerCode}: ${sellerErr.message}`);
+          // An auth failure is not "this seller has no orders" — let it reach the caller
+          // instead of degrading into a silently empty, successful-looking response.
+          if (sellerErr.isAuthError) throw sellerErr;
+          failedSellers.push(sellerCode);
         }
 
         return sellerOrders;
@@ -118,17 +411,108 @@ exports.getOrders = functions.https.onRequest(async (req, res) => {
       }
 
       logger.info(`Successfully fetched a total of ${allOrders.length} orders across ${sellerCodes.length} sellers`);
-      res.status(200).send({ data: { orders: allOrders } });
+      res.status(200).send({
+        data: {
+          orders: allOrders,
+          ...(failedSellers.length > 0 ? { partial: true, failedSellers } : {})
+        }
+      });
 
     } catch (error) {
       logger.error("Error fetching orders", error.message);
       if (error.response) {
         logger.error("Server Response", error.response.data);
       }
+      if (error.isAuthError) {
+        res.status(502).send({
+          data: {
+            error: "Omniful authentication failed. The API credentials need to be renewed.",
+            reason: "omniful_auth",
+            detail: error.message
+          }
+        });
+        return;
+      }
       res.status(500).send({ data: { error: "Failed to fetch orders from the external API." } });
     }
   });
 });
+
+// ==========================================
+// Seller roster (cached)
+// ==========================================
+// The roster changes a few times a year, but every page load was paying a cold start plus a
+// live Omniful round trip for it — that is what made the sellers dropdown slow. Cache it in
+// RTDB so any instance (and any of the two dashboards) can serve it without calling Omniful,
+// and keep a per-instance copy so a warm instance skips the database read too.
+// Kept in Firestore rather than RTDB: the runtime service account authenticates to Firestore
+// but not to RTDB, and this cache sits on the critical path of every page load.
+const SELLERS_CACHE_DOC = ["logestechs_config", "sellers_cache"];
+const SELLERS_CACHE_TTL_MS = 10 * 60 * 1000;
+let sellersMemoryCache = null; // { sellers, cachedAt }
+
+function sellersCacheAge(entry) {
+  return entry ? Date.now() - entry.cachedAt : Infinity;
+}
+
+async function readSellersCache() {
+  // Only trust the in-process copy while it is fresh; once it ages out, another instance may
+  // already have refreshed the shared copy, and re-reading is far cheaper than hitting Omniful.
+  if (sellersMemoryCache && sellersCacheAge(sellersMemoryCache) < SELLERS_CACHE_TTL_MS) {
+    return sellersMemoryCache;
+  }
+
+  try {
+    const doc = await firestore.collection(SELLERS_CACHE_DOC[0]).doc(SELLERS_CACHE_DOC[1]).get();
+    const data = doc.exists ? doc.data() : null;
+    if (data && Array.isArray(data.sellers) && data.sellers.length > 0) {
+      sellersMemoryCache = { sellers: data.sellers, cachedAt: data.cached_at || 0 };
+    }
+  } catch (err) {
+    logger.warn(`[Sellers] Could not read the sellers cache: ${err.message}`);
+  }
+
+  return sellersMemoryCache;
+}
+
+async function writeSellersCache(sellers) {
+  sellersMemoryCache = { sellers, cachedAt: Date.now() };
+  try {
+    await firestore.collection(SELLERS_CACHE_DOC[0]).doc(SELLERS_CACHE_DOC[1])
+      .set({ sellers, cached_at: sellersMemoryCache.cachedAt });
+  } catch (err) {
+    logger.warn(`[Sellers] Could not write the sellers cache: ${err.message}`);
+  }
+}
+
+// Returns { sellers, fromCache, ageMs, stale }. `force` bypasses the cache for a manual retry.
+// A failed Omniful lookup falls back to the cached roster rather than emptying the dropdown —
+// a stale seller list is far more useful here than an error state.
+async function getSellersList({ force = false } = {}) {
+  const cached = force ? null : await readSellersCache();
+  if (cached && sellersCacheAge(cached) < SELLERS_CACHE_TTL_MS) {
+    return { sellers: cached.sellers, fromCache: true, ageMs: sellersCacheAge(cached), stale: false };
+  }
+
+  try {
+    const response = await omnifulRequest({
+      method: "GET",
+      url: `${memoryTokens.baseUrl}/sales-channel/public/v1/tenants/sellers`,
+      params: { page: 1, per_page: 100, is_active: true, include_all_sellers: true },
+      timeout: 15000
+    });
+    const sellers = response.data?.data || [];
+    if (sellers.length > 0) await writeSellersCache(sellers);
+    return { sellers, fromCache: false, ageMs: 0, stale: false };
+  } catch (err) {
+    const fallback = cached || sellersMemoryCache;
+    if (fallback && fallback.sellers.length > 0) {
+      logger.warn(`[Sellers] Omniful lookup failed (${err.message}); serving the cached roster instead.`);
+      return { sellers: fallback.sellers, fromCache: true, ageMs: sellersCacheAge(fallback), stale: true };
+    }
+    throw err;
+  }
+}
 
 exports.getSellers = functions.https.onRequest(async (req, res) => {
   return cors(req, res, async () => {
@@ -137,34 +521,41 @@ exports.getSellers = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    const token = process.env.OMNIFUL_API_TOKEN;
-    if (!token) {
-      logger.error("Missing OMNIFUL_API_TOKEN environment variable.");
-      res.status(500).send({ data: { error: "Server Configuration Error" } });
-      return;
-    }
-    const baseUrl = "https://prodapi.omniful.com";
-    const endpoint = "/sales-channel/public/v1/tenants/sellers";
+    // ?refresh=1 is the manual escape hatch behind the dropdown's Retry button.
+    const force = req.query.refresh === "1" || req.query.refresh === "true";
 
     try {
-      const response = await axios.get(`${baseUrl}${endpoint}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        params: {
-          page: 1,
-          per_page: 100,
-          is_active: true,
-          include_all_sellers: true
-        }
-      });
+      const { sellers, fromCache, ageMs, stale } = await getSellersList({ force });
 
-      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-      res.status(200).send({ data: { sellers: response.data.data } });
+      // The roster is identical for every viewer, so let Hosting's CDN answer most of these
+      // without ever waking the function — that removes the cold start, which was the bulk of
+      // the wait. A forced refresh must never be cached, or Retry would return the same body.
+      res.set('Cache-Control', force
+        ? 'no-store'
+        : 'public, max-age=60, s-maxage=600, stale-while-revalidate=86400');
+      res.status(200).send({ data: { sellers, cached: fromCache, ageMs, stale: !!stale } });
     } catch (error) {
       logger.error("Error fetching sellers list", error.message);
-      res.status(500).send({ data: { error: "Failed to fetch sellers list." } });
+      if (error.isAuthError) {
+        res.status(502).send({
+          data: {
+            error: "Omniful authentication failed. The API credentials need to be renewed.",
+            reason: "omniful_auth",
+            detail: error.message
+          }
+        });
+        return;
+      }
+      const upstreamStatus = error.response ? error.response.status : null;
+      res.status(502).send({
+        data: {
+          error: upstreamStatus
+            ? `Omniful returned HTTP ${upstreamStatus} when listing sellers.`
+            : `Could not reach Omniful: ${error.message}`,
+          reason: "omniful_upstream",
+          upstreamStatus
+        }
+      });
     }
   });
 });
@@ -344,15 +735,7 @@ exports.updateStatuses = functions.https.onRequest(async (req, res) => {
 });
 // Reusable core helper to fetch COD orders from Omniful API and save to Firebase Realtime Database
 async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes = null) {
-  const token = process.env.OMNIFUL_API_TOKEN;
-  if (!token) {
-    throw new Error("Missing OMNIFUL_API_TOKEN environment variable.");
-  }
-  const baseUrl = "https://prodapi.omniful.com";
-  const headers = {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
-  };
+  const baseUrl = memoryTokens.baseUrl;
 
   const defaultSellerCodes = ["SEM", "BAM", "JS", "AA", "HOJ", "JAT"];
   let targetSellerCodes = sellerCodes && sellerCodes.length > 0 ? sellerCodes : null;
@@ -360,18 +743,14 @@ async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes 
   // If no specific sellers requested, dynamically fetch ALL active sellers from Omniful
   if (!targetSellerCodes || targetSellerCodes.length === 0) {
     try {
-      const sellersRes = await axios.get(`${baseUrl}/sales-channel/public/v1/tenants/sellers`, {
-        headers,
-        params: { page: 1, per_page: 100, is_active: true, include_all_sellers: true },
-        timeout: 10000
-      });
-      const activeSellers = sellersRes.data?.data || [];
+      const { sellers: activeSellers } = await getSellersList();
       const fetchedCodes = activeSellers.map(s => s.code).filter(Boolean);
       if (fetchedCodes.length > 0) {
         targetSellerCodes = fetchedCodes;
         logger.info(`[COD Fetch] Dynamically fetched ${targetSellerCodes.length} active sellers: ${targetSellerCodes.join(', ')}`);
       }
     } catch (err) {
+      if (err.isAuthError) throw err;
       logger.warn(`[COD Fetch] Could not dynamically load sellers list, using default sellers: ${err.message}`);
     }
   }
@@ -426,7 +805,12 @@ async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes 
           if (fetchMode === 'delivered') queryParams.status = 'delivered';
           if (searchAfter) queryParams.search_after = searchAfter;
 
-          const response = await axios.get(fullUrl, { headers, params: queryParams, timeout: 15000 });
+          const response = await omnifulRequest({
+            method: "GET",
+            url: fullUrl,
+            params: queryParams,
+            timeout: 15000
+          });
           const orderData = response.data;
           const pageOrders = orderData.data || [];
 
@@ -457,7 +841,16 @@ async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes 
           if (!searchAfter) break;
         }
       } catch (sellerErr) {
+        // A permissions verdict means this tenant does not own this seller code — expected for
+        // the hardcoded default roster, and never a reason to touch the credentials.
+        if (sellerErr.isPermissionError) {
+          logger.warn(`[COD Fetch] Seller ${sellerCode} is not accessible to this tenant (${fetchMode}): ${sellerErr.message}`);
+          continue;
+        }
         logger.error(`[COD Fetch] Error fetching ${fetchMode} orders for seller ${sellerCode}: ${sellerErr.message}`);
+        // Credentials being rejected must abort the whole sync. Swallowing it here is what
+        // made a dead token look like a successful sync that simply found no orders.
+        if (sellerErr.isAuthError) throw sellerErr;
       }
     }
 
@@ -569,6 +962,19 @@ exports.scheduledFetchCODOrders = onSchedule({
     windowDescription = `Yesterday (${yesterdayStr})`;
   }
 
+  // An order that has not been delivered is stored under its CREATED date, so once that
+  // date falls out of the nightly window its status can never be refreshed again — it
+  // stays frozen at whatever it was the night it first appeared. That is why orders sat
+  // at "ready_to_ship" or "on_hold" here long after Omniful had moved them on. Reaching
+  // back over the created dates of orders that may still be open keeps them current;
+  // delivered orders are unaffected, since they are keyed by their delivery date.
+  const OPEN_ORDER_LOOKBACK_DAYS = 14;
+  const lookbackStart = new Date(ammanNow);
+  lookbackStart.setDate(lookbackStart.getDate() - OPEN_ORDER_LOOKBACK_DAYS);
+  const lookbackStartTs = new Date(`${formatDateStr(lookbackStart)}T00:00:00+03:00`).getTime();
+  startTimestamp = Math.min(startTimestamp, lookbackStartTs);
+  windowDescription += ` plus open orders back to ${formatDateStr(lookbackStart)}`;
+
   logger.info(`[Scheduled COD] Fetching window for ${windowDescription} (from ${startTimestamp} to ${endTimestamp})`);
 
   try {
@@ -620,7 +1026,13 @@ exports.syncCODOrders = functions.https.onRequest(async (req, res) => {
       res.status(200).send({ data: { success: true, count: result.count, orders: result.orders } });
     } catch (error) {
       logger.error("Error in syncCODOrders", error.message);
-      res.status(500).send({ data: { error: error.message } });
+      const status = error.isAuthError ? 502 : 500;
+      res.status(status).send({
+        data: {
+          error: error.message,
+          ...(error.isAuthError ? { reason: "omniful_auth" } : {})
+        }
+      });
     }
   });
 });
@@ -648,8 +1060,70 @@ exports.getCODOrders = functions.https.onRequest(async (req, res) => {
       res.status(200).send({ data: { orders: result.orders } });
     } catch (error) {
       logger.error("Error in getCODOrders", error.message);
+      if (error.isAuthError) {
+        res.status(502).send({ data: { error: "Omniful authentication failed. The API credentials need to be renewed.", reason: "omniful_auth", detail: error.message } });
+        return;
+      }
       res.status(500).send({ data: { error: "Failed to fetch COD orders from the external API." } });
     }
   });
 });
+
+// HTTP Endpoint: report Omniful authentication status. READ-ONLY BY DESIGN.
+//
+// The `force` and `hard` parameters this endpoint used to accept both called the grant
+// endpoint, which revoked the bridge's copy of the token. They are gone. Rotation lives in the
+// bridge repo's python/scripts/rotate_omniful_tokens.py and has no trigger here — if you are
+// adding one back, you are re-creating the outage this endpoint exists to diagnose.
+exports.refreshOmnifulAuth = functions.https.onRequest(async (req, res) => {
+  return cors(req, res, async () => {
+    try {
+      // Always read through to Firestore: the whole point of a status check is to see what the
+      // shared record actually holds right now, not what this instance cached.
+      await loadSharedToken({ force: true });
+
+      let token;
+      try {
+        token = await getOmnifulAccessToken();
+      } catch (err) {
+        if (err.isAuthError) {
+          res.status(502).send({ data: { success: false, reason: "omniful_auth", message: err.message } });
+          return;
+        }
+        throw err;
+      }
+
+      // A JWT that has not hit its `exp` can still be revoked server-side. Checking `exp` alone
+      // reported a dead token as healthy, which hid a live outage — so actually call Omniful.
+      const probe = await probeOmnifulToken(token);
+      const exp = parseJwtExp(token);
+      const refreshExp = parseJwtExp(memoryTokens.refreshToken);
+
+      const message = probe.ok
+        ? `Token is active and accepted by Omniful (${tokenLifetimeDescription(token)}). This app never rotates; the bridge owns rotation.`
+        : `Omniful rejected the shared token (HTTP ${probe.status}, ${tokenLifetimeDescription(token)}). Run python/scripts/rotate_omniful_tokens.py in the bridge repo — it updates ${AUTH_DOC[0]}/${AUTH_DOC[1]} for every consumer, including this app.`;
+
+      res.status(probe.ok ? 200 : 502).send({
+        data: {
+          success: probe.ok,
+          message,
+          rotatesHere: false,
+          // "env" here is a warning sign, not a detail: it means the shared document could not
+          // be read, so the next bridge rotation will not reach this app automatically.
+          tokenSource: sharedTokenIsAuthoritative ? `firestore:${AUTH_DOC[0]}/${AUTH_DOC[1]}` : "env-fallback",
+          tokenFingerprint: fingerprintToken(token),
+          expiresAt: exp ? new Date(exp).toISOString() : null,
+          refreshTokenExpiresAt: refreshExp ? new Date(refreshExp).toISOString() : null,
+          isExpired: isTokenExpired(token),
+          acceptedByOmniful: probe.ok,
+          upstreamStatus: probe.status
+        }
+      });
+    } catch (err) {
+      logger.error("Error in refreshOmnifulAuth", err.message);
+      res.status(500).send({ data: { success: false, error: err.message } });
+    }
+  });
+});
+
 

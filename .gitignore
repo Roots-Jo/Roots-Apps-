@@ -11,11 +11,25 @@ firebase-debug.*.log*
 .firebase/
 
 # Firebase config
-firebase.json
-.firebaserc
+# Deny JSON by default so a stray service-account key can never be committed, then
+# explicitly re-include the files that must be versioned. Without these negations the
+# app's own reference data (mapping.json, deliveries.json) was silently untracked and
+# existed only on whichever machine last edited it.
 *.json
 !package.json
 !package-lock.json
+!firebase.json
+!.firebaserc
+!database.rules.json
+!public/data/mapping.json
+!public/data/deliveries.json
+!public/data/statuses.json
+
+# Service-account / credential files must never be committed
+*service-account*.json
+*serviceAccount*.json
+*-key.json
+*credentials*.json
 
 # Runtime data
 pids

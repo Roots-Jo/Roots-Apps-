@@ -74,6 +74,40 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/[\u064B-\u0652]/g, '');
     }
 
+    // Addresses come from the shipping address, and ONLY from the shipping address \u2014 that is
+    // where the parcel actually goes, and it carries area detail the billing copy often drops
+    // (e.g. "\u2026, \u0645\u0631\u062C \u0627\u0644\u062D\u0645\u0627\u0645" where billing has only the name).
+    //
+    // There is deliberately no billing fallback. It used to be here for delivery records saved
+    // before shipping was adopted, but those are gone: every stored record now carries a
+    // shipping city and address1. A fallback that silently substitutes a different address is
+    // worse than a blank one \u2014 a blank shows up as "Under Review" and gets fixed, whereas a
+    // silent substitution maps the parcel to wherever the customer happens to pay from.
+    function addrField(flat, field) {
+        if (!flat) return '';
+        const ship = flat['shipping_address_' + field];
+        if (ship !== undefined && ship !== null && String(ship).trim() !== '') return String(ship).trim();
+        warnMissingShipping(flat, field);
+        return '';
+    }
+
+    // Surfaces the gap instead of papering over it. Logged once per order+field so a page of
+    // 100 orders cannot flood the console.
+    const warnedMissingShipping = new Set();
+    function warnMissingShipping(flat, field) {
+        const id = flat.order_id || flat.order_alias || '(no order id)';
+        const key = `${id}|${field}`;
+        if (warnedMissingShipping.has(key)) return;
+        warnedMissingShipping.add(key);
+        const bill = flat['billing_address_' + field];
+        const hadBilling = bill !== undefined && bill !== null && String(bill).trim() !== '';
+        console.warn(`[Address] Order ${id} has no shipping_address_${field}.` +
+            (hadBilling ? ` A billing_address_${field} exists but is deliberately NOT used.` : ''));
+    }
+
+    function addrCity(flat) { return addrField(flat, 'city'); }
+    function addrLine(flat) { return addrField(flat, 'address1'); }
+
     // Fetch base mappings
     fetch('../data/mapping.json')
         .then(res => res.json())
@@ -359,8 +393,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('review-btn')) {
             const index = e.target.getAttribute('data-index');
             const flatOrder = flattenObject(fetchedOrders[index]);
-            const city = (flatOrder.billing_address_city || '').trim();
-            const addr = (flatOrder.billing_address_address1 || '').trim();
+            const city = addrCity(flatOrder);
+            const addr = addrLine(flatOrder);
             const searchString = `${city} ${addr}`;
 
             modalAddressText.textContent = searchString;
@@ -391,8 +425,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const neighborhoodAr = e.target.getAttribute('data-neighborhood-ar');
 
             const flatOrder = flattenObject(fetchedOrders[index]);
-            const city = (flatOrder.billing_address_city || '').trim();
-            const addr = (flatOrder.billing_address_address1 || '').trim();
+            const city = addrCity(flatOrder);
+            const addr = addrLine(flatOrder);
             const searchString = `${city} ${addr}`;
 
             modalAddressText.textContent = searchString;
@@ -424,8 +458,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.target.classList.contains('outside-btn')) {
             const index = e.target.getAttribute('data-index');
             const flatOrder = flattenObject(fetchedOrders[index]);
-            const city = (flatOrder.billing_address_city || '').trim();
-            const addr = (flatOrder.billing_address_address1 || '').trim();
+            const city = addrCity(flatOrder);
+            const addr = addrLine(flatOrder);
             const searchString = `${city} ${addr}`.toLowerCase();
 
             // Add to local outsideAmmanList instead of master sheet
@@ -437,8 +471,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.target.classList.contains('ignore-btn')) {
             const index = e.target.getAttribute('data-index');
             const flatOrder = flattenObject(fetchedOrders[index]);
-            const city = (flatOrder.billing_address_city || '').trim();
-            const addr = (flatOrder.billing_address_address1 || '').trim();
+            const city = addrCity(flatOrder);
+            const addr = addrLine(flatOrder);
             const searchString = `${city} ${addr}`.toLowerCase();
 
             // Add to local ignoreList
@@ -475,19 +509,39 @@ document.addEventListener('DOMContentLoaded', () => {
     let allSellersData = [];
     let fetchedOrders = [];
 
-    async function loadSellers() {
+    // Dropdown open/close is wired once, up front. It used to be attached only after a
+    // successful load, so any failure left the control completely dead.
+    if (sellersToggle && sellersContainer) {
+        sellersToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sellersContainer.classList.toggle('show');
+        });
+
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('sellers-dropdown');
+            if (dd && !dd.contains(e.target)) {
+                sellersContainer.classList.remove('show');
+            }
+        });
+    }
+
+    async function loadSellers(forceRefresh = false) {
         try {
-            const targetUrl = '/fetchSellers';
-            const response = await fetch(targetUrl, {
-                headers: {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
-                }
-            });
-            if (!response.ok) throw new Error('Failed to fetch sellers');
-            const data = await response.json();
-            allSellersData = data.data.sellers || [];
+            sellersToggleText.textContent = 'Loading...';
+            sellersContainer.innerHTML = '<div class="loader-small"></div> <span class="muted-text">Loading sellers...</span>';
+
+            // Deliberately no cache-busting headers: the roster is cached on the server and at
+            // the CDN so this fills in immediately instead of waiting on a cold start plus a live
+            // Omniful call. Retry passes ?refresh=1 to bypass both caches on demand.
+            const targetUrl = forceRefresh ? '/fetchSellers?refresh=1' : '/fetchSellers';
+            const response = await fetch(targetUrl);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const err = new Error((data && data.data && data.data.error) || `Failed to fetch sellers (HTTP ${response.status})`);
+                err.reason = data && data.data ? data.data.reason : null;
+                throw err;
+            }
+            allSellersData = (data.data && data.data.sellers) || [];
 
             if (allSellersData.length === 0) {
                 sellersContainer.innerHTML = '<p style="padding:10px">No active sellers found.</p>';
@@ -532,22 +586,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateToggleText();
 
-            // Toggle Dropdown Visibility
-            sellersToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                sellersContainer.classList.toggle('show');
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!document.getElementById('sellers-dropdown').contains(e.target)) {
-                    sellersContainer.classList.remove('show');
-                }
-            });
-
         } catch (error) {
             console.error(error);
-            sellersContainer.innerHTML = '<p class="error-text" style="color:red; font-size:14px; padding:10px;">Failed to load sellers.</p>';
-            sellersToggleText.textContent = 'Error loading';
+            const isAuth = error.reason === 'omniful_auth';
+            const msg = isAuth
+                ? 'Omniful authentication failed. The API credentials need to be renewed before orders can be fetched.'
+                : (error.message || 'Failed to load sellers.');
+
+            sellersContainer.innerHTML = `
+                <div style="padding: 10px; text-align: center;">
+                    <p style="color: var(--red); font-size: 12px; margin: 0 0 6px;">${msg}</p>
+                    <button type="button" id="btn-retry-sellers" style="background: var(--ol); color: var(--orange); border: 1px solid var(--orange); border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer;">Retry &#8635;</button>
+                </div>
+            `;
+            sellersToggleText.textContent = isAuth ? 'Auth error' : 'Error loading';
+            document.getElementById('btn-retry-sellers')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadSellers(true);
+            });
+            showStatus(msg, 'error');
         }
     }
 
@@ -564,7 +621,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedSellers = Array.from(selectedSellerCheckboxes).map(cb => cb.value);
 
         if (selectedSellers.length === 0) {
-            showStatus('Please select at least one seller.', 'error');
+            showStatus(
+                allSellersData.length === 0
+                    ? 'The seller list could not be loaded, so there is nothing to fetch. Use Retry in the seller dropdown once Omniful access is restored.'
+                    : 'Please select at least one seller.',
+                'error'
+            );
             return;
         }
 
@@ -603,12 +665,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
 
+            const jsonResponse = await response.json().catch(() => ({}));
+
             if (!response.ok) {
-                throw new Error(`Server responded with status: ${response.status}`);
+                const payload = jsonResponse && jsonResponse.data ? jsonResponse.data : {};
+                throw new Error(
+                    payload.reason === 'omniful_auth'
+                        ? 'Omniful authentication failed. The API credentials need to be renewed.'
+                        : (payload.error || `Server responded with status: ${response.status}`)
+                );
             }
 
-            const jsonResponse = await response.json();
-            const orders = jsonResponse.data.orders || [];
+            const orders = (jsonResponse.data && jsonResponse.data.orders) || [];
+
+            if (jsonResponse.data && jsonResponse.data.partial) {
+                showStatus(`Warning: no data returned for seller(s) ${jsonResponse.data.failedSellers.join(', ')}. Results are incomplete.`, 'error');
+            }
 
             if (orders.length === 0) {
                 showStatus(`No orders found between ${startDate} and ${endDate}.`, 'success');
@@ -836,7 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             let headers = Array.from(headersSet).sort();
-            const priorityCols = ["order_id", "order_created_at", "shipment_order_delivered_at", "billing_address_city", "billing_address_address1"];
+            const priorityCols = ["order_id", "order_created_at", "shipment_order_delivered_at", "shipping_address_city", "shipping_address_address1"];
             headers = headers.filter(h => !priorityCols.includes(h));
             headers = [...priorityCols, ...headers];
 
@@ -861,9 +933,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 "shipment_order_delivered_at",
                 "customer_first_name",
                 "customer_last_name",
-                "billing_address_city",
-                "billing_address_state",
-                "billing_address_address1",
+                "shipping_address_city",
+                "shipping_address_state",
+                "shipping_address_address1",
                 "customer_mobile",
                 "invoice_total",
                 "shipping_address_latitude",
@@ -880,8 +952,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let bodyHtml = '';
             flattenedPageOrders.forEach((order, pageIdx) => {
                 const originalIndex = startIndex + pageIdx;
-                const city = order.billing_address_city || '';
-                const addr = order.billing_address_address1 || '';
+                const city = addrCity(order);
+                const addr = addrLine(order);
                 const mapped = mapOrderToArea(city, addr);
                 const area = mapped.area;
                 const areaAr = mapped.areaAr || '';
@@ -899,6 +971,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         cellValue = neighborhood;
                     } else if (header === 'mapped_neighborhood_ar') {
                         cellValue = neighborhoodAr;
+                    } else if (header === 'shipping_address_city' || header === 'shipping_address_address1' || header === 'shipping_address_state') {
+                        cellValue = addrField(order, header.replace('shipping_address_', ''));
                     } else if (header === 'shipping_address_latitude' || header === 'shipping_address_longitude') {
                         const val = order[header];
                         cellValue = (val !== undefined && val !== null && val !== 0 && val !== '0') ? val : '';
@@ -966,8 +1040,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             fetchedOrders.forEach(rawOrder => {
                 const order = flattenObject(rawOrder);
-                const city = order.billing_address_city || '';
-                const addr = order.billing_address_address1 || '';
+                const city = addrCity(order);
+                const addr = addrLine(order);
                 const mapped = mapOrderToArea(city, addr);
 
                 if (mapped.area !== undefined && mapped.area !== null && mapped.area.toLowerCase() !== 'outside amman' && mapped.area.toLowerCase() !== 'under review') {
@@ -1095,9 +1169,9 @@ document.addEventListener('DOMContentLoaded', () => {
             "display_status",
             "customer_first_name",
             "customer_last_name",
-            "billing_address_city",
-            "billing_address_state",
-            "billing_address_address1",
+            "shipping_address_city",
+            "shipping_address_state",
+            "shipping_address_address1",
             "customer_mobile",
             "invoice_total",
             "invoice_total_due",
@@ -1109,12 +1183,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         flattenedOrders.forEach(order => {
             const row = headers.map(header => {
-                let cellValue = order[header] !== undefined && order[header] !== null ? order[header] : '';
+                let cellValue;
+                if (header === 'shipping_address_city' || header === 'shipping_address_address1' || header === 'shipping_address_state') {
+                    cellValue = addrField(order, header.replace('shipping_address_', ''));
+                } else {
+                    cellValue = order[header] !== undefined && order[header] !== null ? order[header] : '';
+                }
 
-                const isPhoneHeader = header === 'customer_mobile' || 
-                                      header === 'billing_address_phone' || 
+                const isPhoneHeader = header === 'customer_mobile' ||
+                                      header === 'billing_address_phone' ||
                                       header === 'shipping_address_phone' ||
-                                      header.toLowerCase().includes('phone') || 
+                                      header.toLowerCase().includes('phone') ||
                                       header.toLowerCase().includes('mobile');
 
                 if (isPhoneHeader && cellValue) {
@@ -1145,9 +1224,9 @@ document.addEventListener('DOMContentLoaded', () => {
             "order_created_at",
             "customer_first_name",
             "customer_last_name",
-            "billing_address_city",
-            "billing_address_state",
-            "billing_address_address1",
+            "shipping_address_city",
+            "shipping_address_state",
+            "shipping_address_address1",
             "customer_mobile",
             "invoice_total",
             "shipping_address_latitude",
@@ -1163,8 +1242,8 @@ document.addEventListener('DOMContentLoaded', () => {
         csvString += headers.join(',') + '\r\n';
 
         flattenedOrders.forEach(order => {
-            const city = order.billing_address_city || '';
-            const addr = order.billing_address_address1 || '';
+            const city = addrCity(order);
+            const addr = addrLine(order);
             const mapped = mapOrderToArea(city, addr);
 
             const row = headers.map(header => {
@@ -1177,6 +1256,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     cellValue = mapped.neighborhood || '';
                 } else if (header === 'mapped_neighborhood_ar') {
                     cellValue = mapped.neighborhoodAr || '';
+                } else if (header === 'shipping_address_city' || header === 'shipping_address_address1' || header === 'shipping_address_state') {
+                    cellValue = addrField(order, header.replace('shipping_address_', ''));
                 } else if (header === 'shipping_address_latitude' || header === 'shipping_address_longitude') {
                     const val = order[header];
                     cellValue = (val !== undefined && val !== null && val !== 0 && val !== '0') ? val : '';

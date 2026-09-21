@@ -47,6 +47,12 @@ const filterWeek = document.getElementById("filter-week");
 const totalPayEl = document.getElementById("history-total-pay");
 const selectAllBtn = document.getElementById("select-all-shifts");
 const deleteSelectedBtn = document.getElementById("delete-selected-btn");
+const exportShiftsBtn = document.getElementById("export-shifts-btn");
+const addShiftUserSel = document.getElementById("add-shift-user");
+const addShiftStartInp = document.getElementById("add-shift-start");
+const addShiftEndInp = document.getElementById("add-shift-end");
+const addShiftPreview = document.getElementById("add-shift-preview");
+const addShiftBtn = document.getElementById("add-shift-btn");
 
 // ── Tabs Logic ──
 if (isAdmin) {
@@ -108,6 +114,21 @@ function getWeekIdentifier(date) {
 function calculatePay(durationMs) {
   const hours = durationMs / 3600000;
   return (hours * JOD_PER_HOUR).toFixed(2);
+}
+
+// The single shape of a history row. Punch-out, admin force-stop, manual entry and
+// admin edits all go through this so the derived fields can never disagree.
+function buildShiftRecord(username, startTime, endTime) {
+  const durationMs = endTime - startTime;
+  return {
+    username: username,
+    date: new Date(startTime).toISOString().split('T')[0],
+    startTime: startTime,
+    endTime: endTime,
+    durationFormatted: formatTime(durationMs),
+    pay: parseFloat(calculatePay(durationMs)),
+    weekIdentifier: getWeekIdentifier(new Date(startTime))
+  };
 }
 
 // ── Punch Clock Logic ──
@@ -248,19 +269,8 @@ async function executePunch(action) {
       // Punch Out
       const endTime = Date.now();
       const startTime = activeShiftData.startTime;
-      const durationMs = endTime - startTime;
-      const pay = calculatePay(durationMs);
-      
-      const newShift = {
-        username: currentUser,
-        date: new Date(startTime).toISOString().split('T')[0],
-        startTime: startTime,
-        endTime: endTime,
-        durationFormatted: formatTime(durationMs),
-        pay: parseFloat(pay),
-        weekIdentifier: getWeekIdentifier(new Date(startTime))
-      };
-      
+      const newShift = buildShiftRecord(currentUser, startTime, endTime);
+
       await push(ref(db, 'shifts/history'), newShift);
       await remove(ref(db, `shifts/active/${currentUser}`));
       
@@ -297,7 +307,6 @@ if (isAdmin) {
   let adminActiveShiftsInterval = null;
   let allActiveShifts = {};
   let editingShiftId = null;
-  
   onValue(ref(db, 'shifts/active'), (snapshot) => {
     allActiveShifts = snapshot.val() || {};
     renderActiveShifts();
@@ -339,19 +348,8 @@ if (isAdmin) {
         try {
           const endTime = Date.now();
           const startTime = shift.startTime;
-          const durationMs = endTime - startTime;
-          const pay = calculatePay(durationMs);
-          
-          const newShift = {
-            username: user,
-            date: new Date(startTime).toISOString().split('T')[0],
-            startTime: startTime,
-            endTime: endTime,
-            durationFormatted: formatTime(durationMs),
-            pay: parseFloat(pay),
-            weekIdentifier: getWeekIdentifier(new Date(startTime))
-          };
-          
+          const newShift = buildShiftRecord(user, startTime, endTime);
+
           await push(ref(db, 'shifts/history'), newShift);
           await remove(ref(db, `shifts/active/${user}`));
         } catch (error) {
@@ -372,6 +370,7 @@ if (isAdmin) {
     })).sort((a, b) => b.startTime - a.startTime); // newest first
     
     populateFilters();
+    populateAddShiftUsers();
     renderHistoryTable();
   });
   
@@ -405,16 +404,32 @@ if (isAdmin) {
     if (weeks.has(currWeekVal)) filterWeek.value = currWeekVal;
   }
   
-  function renderHistoryTable() {
+  function getFilteredShifts() {
     const selectedUser = filterUser.value;
     const selectedWeek = filterWeek.value;
-    
-    const filtered = historicalShifts.filter(shift => {
+
+    return historicalShifts.filter(shift => {
       if (selectedUser !== "all" && shift.username !== selectedUser) return false;
       if (selectedWeek !== "all" && shift.weekIdentifier !== selectedWeek) return false;
       return true;
     });
-    
+  }
+
+  // Groups shifts into the same week buckets the table renders, keyed by weekIdentifier.
+  function groupShiftsByWeek(shifts) {
+    const weeksMap = {};
+    shifts.forEach(shift => {
+      const wk = shift.weekIdentifier || "Unknown Week";
+      if (!weeksMap[wk]) weeksMap[wk] = { shifts: [], weekTotal: 0 };
+      weeksMap[wk].shifts.push(shift);
+      weeksMap[wk].weekTotal += (shift.pay || 0);
+    });
+    return weeksMap;
+  }
+
+  function renderHistoryTable() {
+    const filtered = getFilteredShifts();
+
     let totalPay = 0;
     
     if (filtered.length === 0) {
@@ -428,14 +443,8 @@ if (isAdmin) {
       return;
     }
 
-    const weeksMap = {};
-    filtered.forEach(shift => {
-      const wk = shift.weekIdentifier || "Unknown Week";
-      if (!weeksMap[wk]) weeksMap[wk] = { shifts: [], weekTotal: 0 };
-      weeksMap[wk].shifts.push(shift);
-      weeksMap[wk].weekTotal += (shift.pay || 0);
-      totalPay += (shift.pay || 0);
-    });
+    const weeksMap = groupShiftsByWeek(filtered);
+    filtered.forEach(shift => { totalPay += (shift.pay || 0); });
 
     const weekKeys = Object.keys(weeksMap).sort().reverse();
     
@@ -456,7 +465,7 @@ if (isAdmin) {
       
       html += weekObj.shifts.map(shift => {
         const dayStr = new Date(shift.startTime).toLocaleDateString("en-US", { weekday: "long" });
-        
+
         if (shift.id === editingShiftId) {
           return `
             <tr>
@@ -479,7 +488,7 @@ if (isAdmin) {
             </tr>
           `;
         }
-        
+
         return `
           <tr>
             <td><input type="checkbox" class="shift-checkbox" data-id="${shift.id}" style="pointer-events: auto;"></td>
@@ -572,32 +581,27 @@ if (isAdmin) {
         const id = saveBtn.getAttribute("data-id");
         const startInput = document.getElementById(`edit-start-${id}`);
         const endInput = document.getElementById(`edit-end-${id}`);
-        
+
         if (!startInput || !endInput || !startInput.value || !endInput.value) {
-          alert("Please fill in both start and end times.");
+          alert(t("shift_err_times_required", "Please fill in both start and end times."));
           return;
         }
-        
+
         const newStartTime = new Date(startInput.value).getTime();
         const newEndTime = new Date(endInput.value).getTime();
-        
+
         if (newEndTime <= newStartTime) {
-          alert("End time must be after start time.");
+          alert(t("shift_err_end_after_start", "End time must be after start time."));
           return;
         }
-        
-        const durationMs = newEndTime - newStartTime;
-        const pay = calculatePay(durationMs);
-        
-        const updateData = {
-          startTime: newStartTime,
-          endTime: newEndTime,
-          durationFormatted: formatTime(durationMs),
-          pay: parseFloat(pay),
-          date: new Date(newStartTime).toISOString().split('T')[0],
-          weekIdentifier: getWeekIdentifier(new Date(newStartTime))
-        };
-        
+
+        const shift = historicalShifts.find(s => s.id === id);
+        const updateData = buildShiftRecord(shift ? shift.username : undefined, newStartTime, newEndTime);
+        // A record edited by hand should not look like a clean punch-clock reading.
+        updateData.editedBy = currentUser;
+        updateData.editedAt = Date.now();
+        if (!shift) delete updateData.username;
+
         saveBtn.disabled = true;
         try {
           await update(ref(db, `shifts/history/${id}`), updateData);
@@ -605,7 +609,7 @@ if (isAdmin) {
           renderHistoryTable();
         } catch (error) {
           console.error(error);
-          alert("Failed to update shift.");
+          alert(t("shift_err_update", "Failed to update shift."));
         }
         saveBtn.disabled = false;
         return;
@@ -623,6 +627,196 @@ if (isAdmin) {
           }
         }
       }
+    });
+  }
+
+  // ── Manual Shift Entry ──
+  let directoryUsers = [];
+
+  async function loadDirectoryUsers() {
+    try {
+      const snap = await get(ref(db, 'users'));
+      directoryUsers = Object.keys(snap.val() || {});
+    } catch (error) {
+      console.error("Failed to load user directory", error);
+      directoryUsers = [];
+    }
+    populateAddShiftUsers();
+  }
+
+  // Offer everyone in the user directory plus anyone who already has shifts, so a
+  // deleted account's history can still be corrected.
+  function populateAddShiftUsers() {
+    if (!addShiftUserSel) return;
+
+    const names = new Set(directoryUsers);
+    historicalShifts.forEach(shift => {
+      if (shift.username) names.add(shift.username);
+    });
+
+    const prev = addShiftUserSel.value;
+    addShiftUserSel.innerHTML = `<option value="">${t("shift_add_pick_user", "Select a user…")}</option>`;
+    Array.from(names).sort().forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      addShiftUserSel.appendChild(opt);
+    });
+    if (names.has(prev)) addShiftUserSel.value = prev;
+  }
+
+  function readAddShiftTimes() {
+    const startVal = addShiftStartInp ? addShiftStartInp.value : "";
+    const endVal = addShiftEndInp ? addShiftEndInp.value : "";
+    if (!startVal || !endVal) return null;
+
+    const startTime = new Date(startVal).getTime();
+    const endTime = new Date(endVal).getTime();
+    if (isNaN(startTime) || isNaN(endTime)) return null;
+
+    return { startTime, endTime, valid: endTime > startTime };
+  }
+
+  function updateAddShiftPreview() {
+    if (!addShiftPreview) return;
+    addShiftPreview.classList.remove("valid", "invalid");
+
+    const times = readAddShiftTimes();
+    if (!times) {
+      addShiftPreview.textContent = "—";
+      return;
+    }
+    if (!times.valid) {
+      addShiftPreview.textContent = t("shift_err_end_after_start", "End time must be after start time.");
+      addShiftPreview.classList.add("invalid");
+      return;
+    }
+
+    const durationMs = times.endTime - times.startTime;
+    addShiftPreview.textContent = `${formatTime(durationMs)} · ${calculatePay(durationMs)} JOD`;
+    addShiftPreview.classList.add("valid");
+  }
+
+  addShiftStartInp?.addEventListener("input", updateAddShiftPreview);
+  addShiftEndInp?.addEventListener("input", updateAddShiftPreview);
+
+  if (addShiftBtn) {
+    addShiftBtn.addEventListener("click", async () => {
+      const username = addShiftUserSel ? addShiftUserSel.value : "";
+      if (!username) {
+        alert(t("shift_err_pick_user", "Please select a user."));
+        return;
+      }
+
+      const times = readAddShiftTimes();
+      if (!times) {
+        alert(t("shift_err_times_required", "Please fill in both start and end times."));
+        return;
+      }
+      if (!times.valid) {
+        alert(t("shift_err_end_after_start", "End time must be after start time."));
+        return;
+      }
+
+      const durationMs = times.endTime - times.startTime;
+      const confirmMsg = `${t("shift_add_confirm", "Add a manual shift for")} ${username}: ${formatTime(durationMs)} — ${calculatePay(durationMs)} JOD?`;
+      if (!confirm(confirmMsg)) return;
+
+      const record = buildShiftRecord(username, times.startTime, times.endTime);
+      // Manual entries did not come from the punch clock; mark them so payroll can tell.
+      record.addedBy = currentUser;
+      record.addedAt = Date.now();
+
+      addShiftBtn.disabled = true;
+      try {
+        await push(ref(db, 'shifts/history'), record);
+        addShiftUserSel.value = "";
+        addShiftStartInp.value = "";
+        addShiftEndInp.value = "";
+        updateAddShiftPreview();
+      } catch (error) {
+        console.error(error);
+        alert(t("shift_err_add", "Failed to add shift."));
+      }
+      addShiftBtn.disabled = false;
+    });
+  }
+
+  loadDirectoryUsers();
+
+  // Exports exactly what the table is showing: same filters, same week grouping,
+  // same subtotals — so an exported payroll sheet reconciles against the screen.
+  if (exportShiftsBtn) {
+    exportShiftsBtn.addEventListener("click", () => {
+      if (typeof XLSX === "undefined") {
+        alert("Excel library is still loading. Please try again in a moment.");
+        return;
+      }
+
+      const filtered = getFilteredShifts();
+      if (filtered.length === 0) {
+        alert(t("shift_no_history", "No shifts found."));
+        return;
+      }
+
+      const headerRow = [
+        t("th_user", "User"),
+        t("th_date", "Date"),
+        t("th_day", "Day"),
+        t("th_start", "Start Time"),
+        t("th_end", "End Time"),
+        t("th_duration", "Duration"),
+        t("th_pay", "Pay (JOD)")
+      ];
+
+      const rows = [headerRow];
+      const weeksMap = groupShiftsByWeek(filtered);
+      const weekKeys = Object.keys(weeksMap).sort().reverse();
+      let totalPay = 0;
+
+      weekKeys.forEach(wk => {
+        const weekObj = weeksMap[wk];
+        totalPay += weekObj.weekTotal;
+
+        rows.push([wk, "", "", "", "", "", ""]);
+
+        weekObj.shifts.forEach(shift => {
+          rows.push([
+            shift.username || "",
+            shift.date || "",
+            shift.startTime ? new Date(shift.startTime).toLocaleDateString("en-US", { weekday: "long" }) : "",
+            formatDatetimeLocal(shift.startTime),
+            formatDatetimeLocal(shift.endTime),
+            shift.durationFormatted || "",
+            Number((shift.pay || 0).toFixed(2))
+          ]);
+        });
+
+        rows.push(["", "", "", "", "", "Subtotal:", Number(weekObj.weekTotal.toFixed(2))]);
+      });
+
+      rows.push([]);
+      rows.push(["", "", "", "", "", t("shift_total", "Total:"), Number(totalPay.toFixed(2))]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+
+      // Auto-fit column widths against the widest cell in each column
+      ws["!cols"] = headerRow.map((label, colIdx) => {
+        let maxLen = String(label).length;
+        rows.forEach(r => {
+          const cellVal = r[colIdx] !== undefined && r[colIdx] !== null ? String(r[colIdx]) : "";
+          if (cellVal.length > maxLen) maxLen = Math.min(cellVal.length, 50);
+        });
+        return { wch: Math.max(maxLen + 3, 12) };
+      });
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Shift History");
+
+      const selectedUser = filterUser.value;
+      const userPart = selectedUser !== "all" ? `_${selectedUser.replace(/[^\w-]/g, "_")}` : "";
+      const todayStr = new Date().toISOString().split("T")[0];
+      XLSX.writeFile(wb, `Roots_Shift_History${userPart}_${todayStr}.xlsx`);
     });
   }
 

@@ -157,19 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Load Sellers (if admin)
-    async function loadSellers() {
+    async function loadSellers(forceRefresh = false) {
         if (!isAdmin || !sellersContainer || !sellersToggleText) return;
         try {
             sellersToggleText.textContent = "Loading...";
             sellersContainer.innerHTML = '<div class="loader-small"></div> <span class="muted-text">Loading sellers...</span>';
 
-            const response = await fetch('/fetchSellers', {
-                headers: {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
-                }
-            });
+            // See orders_app.js: the roster is served from the server/CDN cache so the dropdown
+            // fills fast; Retry passes ?refresh=1 when a genuinely fresh list is wanted.
+            const response = await fetch(forceRefresh ? '/fetchSellers?refresh=1' : '/fetchSellers');
             if (!response.ok) throw new Error(`Failed to fetch sellers (HTTP ${response.status})`);
             const data = await response.json();
             allSellersData = data.data?.sellers || [];
@@ -213,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             document.getElementById('btn-retry-sellers')?.addEventListener('click', (e) => {
                 e.stopPropagation();
-                loadSellers();
+                loadSellers(true);
             });
             sellersToggleText.textContent = "Error Loading";
         }
@@ -1926,7 +1922,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getFilteredOrders() {
         if (!apiOrders || apiOrders.length === 0) return [];
 
-        return apiOrders.filter(originalOrder => {
+        const filtered = apiOrders.filter(originalOrder => {
             const flat = flattenObject(originalOrder);
             const delInfo = extractOrderDeliveredDate(originalOrder, flat);
             const creInfo = extractOrderCreatedDate(originalOrder, flat);
@@ -2015,23 +2011,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Sort filtered orders based on ordersSortColumn & ordersSortDirection (Default: order_created_at desc)
-        filtered.sort((a, b) => {
-            const flatA = flattenObject(a);
-            const flatB = flattenObject(b);
-            const valA = getOrderRawSortValue(ordersSortColumn, a, flatA);
-            const valB = getOrderRawSortValue(ordersSortColumn, b, flatB);
+        // The sort key is computed once per order rather than inside the comparator: flattenObject
+        // walks the whole order recursively, and doing that per comparison is O(n log n) deep
+        // copies, which stalls the page on a few thousand orders.
+        const decorated = filtered.map(order => ({
+            order,
+            key: getOrderRawSortValue(ordersSortColumn, order, flattenObject(order))
+        }));
 
+        const dir = ordersSortDirection === 'asc' ? 1 : -1;
+        decorated.sort((a, b) => {
             let cmp = 0;
-            if (typeof valA === 'number' && typeof valB === 'number') {
-                cmp = valA - valB;
+            if (typeof a.key === 'number' && typeof b.key === 'number') {
+                cmp = a.key - b.key;
             } else {
-                cmp = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                cmp = String(a.key).localeCompare(String(b.key), undefined, { numeric: true, sensitivity: 'base' });
             }
-
-            return ordersSortDirection === 'asc' ? cmp : -cmp;
+            return dir * cmp;
         });
 
-        return filtered;
+        return decorated.map(d => d.order);
     }
 
     function updateOrdersFilterDropdownOptions(orders) {

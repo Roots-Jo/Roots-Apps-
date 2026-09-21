@@ -6,11 +6,12 @@
   <title data-i18n="shift_title">Shift Tracker | Roots AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/navbar.css?v=10.0.7">
-  <link rel="stylesheet" href="/css/shift_tracker.css?v=1.0.1">
+  <link rel="stylesheet" href="/css/shift_tracker.css?v=1.0.3">
   <script src="https://unpkg.com/html5-qrcode"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script type="module" src="/js/auth.js"></script>
   <script>if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');</script>
-<script src="/js/arabic.js?v=2"></script>
+<script src="/js/arabic.js?v=4"></script>
   </head>
 <body>
 
@@ -69,6 +70,33 @@
         </div>
 
         <div class="admin-section" style="margin-top: 40px;">
+          <div class="setup-title" data-i18n="shift_add_title">Add Shift</div>
+          <div class="setup-sub" data-i18n="shift_add_sub">Manually record a completed shift for a user.</div>
+
+          <div class="add-shift-form">
+            <div class="add-shift-field">
+              <label for="add-shift-user" class="add-shift-label" data-i18n="th_user">User</label>
+              <select id="add-shift-user" class="filter-select">
+                <option value="" data-i18n="shift_add_pick_user">Select a user…</option>
+              </select>
+            </div>
+            <div class="add-shift-field">
+              <label for="add-shift-start" class="add-shift-label" data-i18n="th_start">Start Time</label>
+              <input type="datetime-local" id="add-shift-start" class="filter-select">
+            </div>
+            <div class="add-shift-field">
+              <label for="add-shift-end" class="add-shift-label" data-i18n="th_end">End Time</label>
+              <input type="datetime-local" id="add-shift-end" class="filter-select">
+            </div>
+            <div class="add-shift-field">
+              <span class="add-shift-label" data-i18n="shift_add_calculated">Calculated</span>
+              <div id="add-shift-preview" class="add-shift-preview">—</div>
+            </div>
+            <button id="add-shift-btn" class="btn-export" data-i18n="shift_add_btn">Add Shift</button>
+          </div>
+        </div>
+
+        <div class="admin-section" style="margin-top: 40px;">
           <div class="setup-title" data-i18n="shift_history">Shift History & Payroll</div>
           <div class="setup-sub" data-i18n="shift_history_sub">Completed shifts with calculated pay at 2 JOD/hr.</div>
           
@@ -81,7 +109,10 @@
                 <option value="all" data-i18n="shift_all_weeks">All Weeks</option>
               </select>
             </div>
-            <button id="delete-selected-btn" class="btn-danger" style="display: none;" data-i18n="btn_delete_selected">Delete Selected</button>
+            <div style="display: flex; gap: 10px;">
+              <button id="export-shifts-btn" class="btn-export" data-i18n="btn_export_excel">Export to Excel</button>
+              <button id="delete-selected-btn" class="btn-danger" style="display: none;" data-i18n="btn_delete_selected">Delete Selected</button>
+            </div>
           </div>
 
           <div class="cases-table-wrap">
@@ -114,7 +145,7 @@
     </main>
   </div>
 
-  <script type="module" src="/js/shift_tracker.js?v=1.0.6"></script>
+  <script type="module" src="/js/shift_tracker.js?v=1.0.9"></script>
 </body>
 </html>
 

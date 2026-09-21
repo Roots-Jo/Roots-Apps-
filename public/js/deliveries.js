@@ -4,6 +4,35 @@ let statuses = [];
 window.allDeliveries = [];
 window.renderTable = null;
 
+// Delivery addresses read from the shipping address, and ONLY from the shipping address.
+//
+// The billing fallback that used to live here was for records saved to deliveries.json before
+// shipping was adopted. Those records are gone: every stored delivery now carries a shipping
+// city and address1. Falling back would silently route a parcel to wherever the customer pays
+// from, which is worse than showing a blank that someone can see and fix.
+// Defined at top level so deliveriesMapping.js (loaded after this file) can use it too.
+function deliveryAddrField(record, field) {
+    if (!record) return '';
+    const ship = record['shipping_address_' + field];
+    if (ship !== undefined && ship !== null && String(ship).trim() !== '') return String(ship).trim();
+    warnMissingShipping(record, field);
+    return '';
+}
+window.deliveryAddrField = deliveryAddrField;
+
+// Logged once per record+field so a full table render cannot flood the console.
+const warnedMissingShipping = new Set();
+function warnMissingShipping(record, field) {
+    const id = record.order_id || '(no order id)';
+    const key = `${id}|${field}`;
+    if (warnedMissingShipping.has(key)) return;
+    warnedMissingShipping.add(key);
+    const bill = record['billing_address_' + field];
+    const hadBilling = bill !== undefined && bill !== null && String(bill).trim() !== '';
+    console.warn(`[Address] Delivery ${id} has no shipping_address_${field}.` +
+        (hadBilling ? ` A billing_address_${field} exists but is deliberately NOT used.` : ''));
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const tableBody = document.getElementById('deliveries-table-body');
     const totalCountEl = document.getElementById('total-count');
@@ -123,9 +152,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td style="padding: 12px;">${dateOnly}</td>
                     <td style="padding: 12px;">${del.customer_first_name || ''}</td>
                     <td style="padding: 12px;">${del.customer_last_name || ''}</td>
-                    <td style="padding: 12px;">${del.billing_address_city || ''}</td>
-                    <td style="padding: 12px;">${del.billing_address_state || ''}</td>
-                    <td style="padding: 12px;">${del.billing_address_address1 || ''}</td>
+                    <td style="padding: 12px;">${deliveryAddrField(del, 'city')}</td>
+                    <td style="padding: 12px;">${deliveryAddrField(del, 'state')}</td>
+                    <td style="padding: 12px;">${deliveryAddrField(del, 'address1')}</td>
                     <td style="padding: 12px;">${del.customer_mobile || ''}</td>
                     <td style="padding: 12px;">${del.invoice_total || ''}</td>
                     <td style="padding: 12px; text-align: center;">
@@ -142,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td style="padding: 12px;">${del.mapped_neighborhood_ar || ''}</td>
                     <td style="padding: 12px;">${(del.note || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
                     <td style="padding: 12px;">
-                        <button class="edit-mapping-btn" data-id="${del.order_id}" data-city="${(del.billing_address_city || '').replace(/"/g, '&quot;')}" data-addr="${(del.billing_address_address1 || '').replace(/"/g, '&quot;')}" data-area="${(del.mapped_area || '').replace(/"/g, '&quot;')}" data-area-ar="${(del.mapped_area_ar || '').replace(/"/g, '&quot;')}" data-neighborhood="${(del.mapped_neighborhood || '').replace(/"/g, '&quot;')}" data-neighborhood-ar="${(del.mapped_neighborhood_ar || '').replace(/"/g, '&quot;')}" style="padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit; margin: 0; min-width: auto; height: 28px; border: 1px solid var(--orange); border-radius: 4px; background: transparent; color: var(--orange); cursor: pointer; transition: all 0.15s;">Edit</button>
+                        <button class="edit-mapping-btn" data-id="${del.order_id}" data-city="${deliveryAddrField(del, 'city').replace(/"/g, '&quot;')}" data-addr="${deliveryAddrField(del, 'address1').replace(/"/g, '&quot;')}" data-area="${(del.mapped_area || '').replace(/"/g, '&quot;')}" data-area-ar="${(del.mapped_area_ar || '').replace(/"/g, '&quot;')}" data-neighborhood="${(del.mapped_neighborhood || '').replace(/"/g, '&quot;')}" data-neighborhood-ar="${(del.mapped_neighborhood_ar || '').replace(/"/g, '&quot;')}" style="padding: 4px 8px; font-size: 11px; font-weight: 600; font-family: inherit; margin: 0; min-width: auto; height: 28px; border: 1px solid var(--orange); border-radius: 4px; background: transparent; color: var(--orange); cursor: pointer; transition: all 0.15s;">Edit</button>
                     </td>
                 </tr>
                 `;
@@ -430,8 +459,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             "customer_first_name",
             "customer_last_name",
             "customer_mobile", 
-            "billing_address_city",
-            "billing_address_address1",
+            "shipping_address_city",
+            "shipping_address_address1",
             "invoice_total",
             "shipping_address_latitude",
             "shipping_address_longitude",
@@ -450,8 +479,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             "customer_first_name": "First Name",
             "customer_last_name": "Last Name",
             "customer_mobile": "Mobile",
-            "billing_address_city": "City",
-            "billing_address_address1": "Address",
+            "shipping_address_city": "City",
+            "shipping_address_address1": "Address",
             "invoice_total": "Total Amount",
             "shipping_address_latitude": "Latitude",
             "shipping_address_longitude": "Longitude",
@@ -467,8 +496,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         flattenedOrders.forEach(order => {
             const row = headers.map(header => {
-                let cellValue = order[header] !== undefined && order[header] !== null ? order[header] : '';
-                
+                let cellValue;
+                if (header === 'shipping_address_city' || header === 'shipping_address_address1' || header === 'shipping_address_state') {
+                    cellValue = deliveryAddrField(order, header.replace('shipping_address_', ''));
+                } else {
+                    cellValue = order[header] !== undefined && order[header] !== null ? order[header] : '';
+                }
+
                 if (header === 'toBeDelivered') {
                     cellValue = cellValue ? 'Yes' : 'No';
                 } else if (header === 'order_created_at' && cellValue) {

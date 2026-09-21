@@ -217,6 +217,22 @@ body {
   background: rgba(239,68,68,0.1);
 }
 
+/* Built-in master account */
+.master-note {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--accent-dim, rgba(243, 120, 40, 0.08));
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.switch input:disabled + .slider {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* User Password Section */
 .user-password-section {
   margin-bottom: 16px;
