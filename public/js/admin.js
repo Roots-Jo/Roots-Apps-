@@ -115,7 +115,7 @@ function renderUsers() {
         </div>
         
         <div class="perm-row">
-          <span>${t("app_cod", "COD Reconciliation")}</span>
+          <span>${t("app_cod", "COD Analysis")}</span>
           <label class="switch">
             <input type="checkbox" ${apps['roots_cod_dashboard'] ? 'checked' : ''} ${lockAttr} onchange="togglePerm('${username}', 'roots_cod_dashboard', this.checked)">
             <span class="slider"></span>

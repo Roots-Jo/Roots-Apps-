@@ -432,6 +432,33 @@ export function formatDisplayDate(dateKey) {
     return `${d}/${m}/${y}`;
 }
 
+// Test Seller is a scratch account, not a real merchant — its orders are dropped at the
+// point each page builds its order set, so nothing downstream has to remember to filter
+// them. Roughly 12 orders / 360 JOD a month, small enough to be invisible in a total and
+// large enough to be wrong.
+//
+// Deliberately only Test Seller. Jafar Shop is a real merchant that runs its own
+// fulfilment, so it is handled by the narrower per-indicator rules that already exist and
+// is NOT excluded here.
+const NON_PRODUCTION_STORES = ['test seller'];
+
+export function isNonProductionStore(storeName) {
+    const s = (storeName || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!s) return false;
+    return NON_PRODUCTION_STORES.some(n => s === n || s.replace(/\s+/g, '') === n.replace(/\s+/g, ''));
+}
+
+// A collection day is only reconcilable once it is over. Orders used to arrive in one
+// nightly batch, so a day was always complete by the time it appeared; the hourly fetch
+// now files today's deliveries as they happen, which would otherwise show the current
+// day as a COD group whose expected total climbs all afternoon — and mark it unreconciled
+// for being incomplete. Cash pages call this to leave the open day out; pages about work
+// in progress (Operations Health, the KPI dashboard) deliberately do not.
+export function isClosedBusinessDay(dateKey) {
+    if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
+    return dateKey < dateKeyOf(new Date());
+}
+
 export function dayNameOf(dateKey) {
     if (!dateKey || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return '-';
     const parts = dateKey.split('-').map(Number);

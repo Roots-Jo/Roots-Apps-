@@ -1069,3 +1069,13 @@ tbody tr:last-child td {
     font-weight: 600;
     color: var(--muted);
 }
+/* Result line beside the Refresh Now button in the filter bar. */
+.codh-refresh-note {
+    align-self: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    max-width: 260px;
+    text-align: end;
+    line-height: 1.4;
+}

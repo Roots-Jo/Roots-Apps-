@@ -368,3 +368,14 @@
   .codh-breakdown-name { flex-basis: 100px; }
   .codh-breakdown-val { min-width: 92px; }
 }
+
+/* Result line beside the Refresh Now button in the filter bar. */
+.codh-refresh-note {
+    align-self: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted, #8a9ea3);
+    max-width: 260px;
+    text-align: end;
+    line-height: 1.4;
+}

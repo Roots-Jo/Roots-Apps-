@@ -83,3 +83,7 @@ node_modules/
 .dataconnect
 
 functions/.env
+
+# Local DB snapshots taken before data migrations. Contain live reconciliation
+# records, so they stay out of the repo.
+backups/

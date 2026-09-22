@@ -264,7 +264,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        const allOrders = Array.from(ordersMap.values());
+        // Test Seller is a scratch account, not a real merchant. Dropped here, at the one
+        // place the page's order set is built, so the summary groups, the all-orders table,
+        // the filters and every total below are already free of it.
+        const allOrders = Array.from(ordersMap.values()).filter(order => {
+            const store = (extractStoreName(order, flattenObject(order)) || '')
+                .toLowerCase().replace(/\s+/g, ' ').trim();
+            return store !== 'test seller' && store.replace(/\s+/g, '') !== 'testseller';
+        });
         apiOrders = allOrders;
         ordersCurrentPage = 1;
 
@@ -810,12 +817,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const dateMap = {};
 
+        // Today in Amman, as the warehouse sees it. Used to hold the current day back:
+        // orders now arrive hourly rather than in one nightly batch, so without this the
+        // open day would appear as a COD group whose expected total keeps climbing while
+        // someone is trying to reconcile against it. A day is listed once it has closed.
+        const todayKey = (() => {
+            try {
+                return new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Asia/Amman', year: 'numeric', month: '2-digit', day: '2-digit'
+                }).format(new Date());
+            } catch (e) {
+                const shifted = new Date(Date.now() + 3 * 3600000);
+                return shifted.toISOString().slice(0, 10);
+            }
+        })();
+
         deliveredOrders.forEach(originalOrder => {
             const flat = flattenObject(originalOrder);
             const dateInfo = extractOrderDateInfo(originalOrder, flat);
 
             // Skip Fridays every time
             if (dateInfo.dayName === 'Friday') return;
+
+            // Still collecting — it becomes a reconcilable day at midnight.
+            if (!dateInfo.dateKey || dateInfo.dateKey >= todayKey) return;
 
             const partner = extractShippingPartner(originalOrder, flat);
             const collectionAmount = extractOrderCodAmount(originalOrder, flat);
@@ -951,6 +976,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const matchSel = document.getElementById('filter-summary-match');
         const resetBtn = document.getElementById('btn-reset-filters');
         const toggleCollapseBtn = document.getElementById('btn-toggle-all-collapse');
+
+        // Pull the last two days from Omniful on demand. The page is already subscribed to
+        // cod_daily_orders, so the rows land over that listener — nothing here re-renders.
+        // The server holds a 60s cooldown and reports it rather than erroring.
+        const refreshBtn = document.getElementById('cod-refresh-now');
+        const refreshNote = document.getElementById('cod-refresh-note');
+        if (refreshBtn) {
+            const original = refreshBtn.textContent;
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.disabled = true;
+                refreshBtn.textContent = 'Refreshing…';
+                if (refreshNote) refreshNote.textContent = '';
+                try {
+                    const r = await fetch('/refreshCODNow', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: '{}'
+                    });
+                    const d = (await r.json().catch(() => ({}))).data || {};
+                    if (refreshNote) {
+                        if (d.skipped) {
+                            refreshNote.textContent = `Just refreshed — try again in ${d.retryInSeconds}s`;
+                        } else if (d.error) {
+                            refreshNote.textContent = d.reason === 'omniful_auth'
+                                ? 'Omniful rejected the credentials. The token needs rotating.'
+                                : `Refresh failed: ${d.error}`;
+                        } else {
+                            const at = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                            refreshNote.textContent = `Updated ${at} · ${d.count || 0} orders synced`;
+                        }
+                    }
+                } catch (err) {
+                    if (refreshNote) refreshNote.textContent = `Refresh failed: ${err.message}`;
+                } finally {
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = original;
+                }
+            });
+        }
 
         dateSel?.addEventListener('change', (e) => {
             filterDate = e.target.value;

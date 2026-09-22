@@ -54,7 +54,7 @@
     let centerLinks = ``;
     
     if (userApps['roots_cod_dashboard']) {
-      centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}" data-i18n="nav_cod">${t('nav_cod', 'COD Reconciliation')}</a>`;
+      centerLinks += `<a href="/roots_cod_dashboard" class="${isActive('roots_cod_dashboard')}" data-i18n="nav_cod">${t('nav_cod', 'COD Analysis')}</a>`;
     }
     if (userApps['pickup_tracker']) {
       centerLinks += `<a href="/pickup_tracker" class="${isActive('pickup_tracker')}" data-i18n="nav_pickup">${t('nav_pickup', 'Pick Up Tracker')}</a>`;
@@ -63,7 +63,7 @@
       centerLinks += `<a href="/cases_tracker" class="${isActive('cases_tracker')}" data-i18n="nav_cases">${t('nav_cases', 'Cases Tracker')}</a>`;
     }
     if (userApps['kpi_dashboard']) {
-      centerLinks += `<a href="https://rootsdashboardjun2026.netlify.app/" target="_blank" data-i18n="nav_kpi">${t('nav_kpi', 'KPI Tracking')}</a>`;
+      centerLinks += `<a href="/kpi_dashboard" class="${isActive('kpi_dashboard')}" data-i18n="nav_kpi">${t('nav_kpi', 'KPI Tracking')}</a>`;
     }
     if (userApps['shift_tracker']) {
       centerLinks += `<a href="/shift_tracker" class="${isActive('shift_tracker')}" data-i18n="nav_shift">${t('nav_shift', 'Shift Tracker')}</a>`;
@@ -105,7 +105,9 @@
                 ${firstLetter}
               </div>
             </a>
-            <button id="nav-logout-btn" data-i18n="nav_logout" style="background: #F37828; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 14px;">${t('nav_logout', 'Log Out')}</button>
+            <button id="nav-logout-btn" data-i18n-title="nav_logout" aria-label="${t('nav_logout', 'Log Out')}" title="${t('nav_logout', 'Log Out')}" style="background: #F37828; color: white; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </button>
           </div>
         </div>
       </nav>

@@ -3,11 +3,11 @@
 // The cash side lives on the COD Reconciliation page.
 
 import {
-    t, el, scope, getOrders, subscribeToData, THRESHOLDS, CLA_DAYS, CLA_MAX_AGE_DAYS, DEFAULT_WINDOW_DAYS, gradeByThreshold, isExcludedSeller, inScope, inWindow, renderTiles, renderDrill, buildBarsSvg, attachChartHover, populateFilterOptions, defaultBusinessDay
+    t, el, scope, getOrders, subscribeToData, THRESHOLDS, CLA_DAYS, CLA_MAX_AGE_DAYS, DEFAULT_WINDOW_DAYS, gradeByThreshold, isExcludedSeller, inScope, inWindow, renderTiles, renderDrill, buildBarsSvg, attachChartHover, populateFilterOptions, defaultBusinessDay, wireRefreshButton
 } from "/js/cod_core.js?v=1.0.0";
 import {
     escapeHtml, dateKeyOf, daysBetween, formatDisplayDate, dayNameOf
-} from "/js/cod_shared.js?v=1.1.0";
+} from "/js/cod_shared.js?v=1.3.0";
 
 let filterDate = '';
 let openIndicator = null;
@@ -203,6 +203,8 @@ function initFilters() {
     };
     winSel?.addEventListener('change', applyWindow);
     winSel?.addEventListener('input', applyWindow);
+
+    wireRefreshButton('codh-refresh', 'codh-refresh-note');
 
     el('codh-reset')?.addEventListener('click', () => {
         filterDate = defaultBusinessDay();

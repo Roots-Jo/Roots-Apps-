@@ -1,0 +1,340 @@
+/* Fulfilment KPI dashboard.
+   Written against the Roots design system: Montserrat, the orange/deep palette, the
+   .page-card shell and the shared table, filter-bar and section-title classes from
+   orders.css. Only what those do not already cover is declared here.
+
+   Palette roles are declared once so light/dark swap in one place, matching the pattern
+   in cod_health.css. */
+
+.kpi-root {
+  --kpi-surface: var(--surface, #ffffff);
+  --kpi-raised: var(--bg, #f2f4f5);
+  --kpi-ink: var(--dark, #304246);
+  --kpi-ink-2: #52616b;
+  --kpi-muted: var(--muted, #8a9ea3);
+  --kpi-bdr: var(--bdr, #e2e6e8);
+  --kpi-bdr-light: var(--border-light, #eceef0);
+
+  --kpi-accent: var(--orange, #F37828);
+  --kpi-accent-bg: var(--ol, #fff3eb);
+  --kpi-good: var(--green, #1e8a4a);
+  --kpi-good-bg: var(--gbg, #e6f4ec);
+  --kpi-warn: #b8770a;
+  --kpi-warn-bg: #fdf6e6;
+  --kpi-bad: var(--red, #c0392b);
+  --kpi-bad-bg: var(--rbg, #fdf0ee);
+  --kpi-blue: var(--blue, #1a5fa8);
+  --kpi-blue-bg: var(--bbg, #e8f0fb);
+  --kpi-purple: var(--purple, #6b46c1);
+  --kpi-purple-bg: var(--pbg, #f3f0ff);
+}
+
+:root[data-theme="dark"] .kpi-root {
+  --kpi-surface: #1e1e1e;
+  --kpi-raised: #252525;
+  --kpi-ink: #e0e0e0;
+  --kpi-ink-2: #c0c0c0;
+  --kpi-muted: #9a9a9a;
+  --kpi-bdr: #333333;
+  --kpi-bdr-light: #2a2a2a;
+
+  --kpi-accent-bg: rgba(243, 120, 40, 0.14);
+  --kpi-good: #4ade80;
+  --kpi-good-bg: rgba(74, 222, 128, 0.13);
+  --kpi-warn: #fbbf24;
+  --kpi-warn-bg: rgba(251, 191, 36, 0.13);
+  --kpi-bad: #f87171;
+  --kpi-bad-bg: rgba(248, 113, 113, 0.13);
+  --kpi-blue: #7fb2f0;
+  --kpi-blue-bg: rgba(127, 178, 240, 0.13);
+  --kpi-purple: #b49ae8;
+  --kpi-purple-bg: rgba(180, 154, 232, 0.13);
+}
+
+/* Figures line up column-wise without pulling in a second typeface. */
+.kpi-root .num { font-variant-numeric: tabular-nums; }
+
+/* ── Header ── */
+
+.kpi-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kpi-muted);
+}
+
+.kpi-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--kpi-muted); flex: 0 0 auto; }
+.kpi-dot.live { background: var(--kpi-good); }
+.kpi-dot.err { background: var(--kpi-bad); }
+.kpi-dot.load { background: var(--kpi-accent); animation: kpiPulse 1s infinite; }
+@keyframes kpiPulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
+
+.kpi-load-bar { height: 2px; background: var(--kpi-bdr-light); border-radius: 2px; overflow: hidden; margin-top: 0.75rem; }
+.kpi-load-bar i { display: block; height: 100%; background: var(--kpi-accent); width: 0; transition: width .2s ease; }
+
+/* ── Rule chips ── */
+
+.kpi-rules { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.75rem; }
+
+.kpi-rule {
+  padding: 5px 12px;
+  border: 1px solid var(--kpi-bdr);
+  border-radius: 20px;
+  background: var(--kpi-surface);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--kpi-muted);
+}
+.kpi-rule b { color: var(--kpi-ink); font-weight: 700; }
+
+/* ── Tabs — the orange-underline pattern used by the COD sub-nav ── */
+
+.kpi-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+  border-bottom: 1px solid var(--kpi-bdr);
+}
+
+.kpi-tab {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 0 0 8px 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kpi-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.kpi-tab:hover { color: var(--kpi-ink); }
+.kpi-tab.active { color: var(--kpi-accent); border-bottom-color: var(--kpi-accent); }
+
+/* ── Cards ── */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 1rem;
+}
+
+.kpi-card {
+  background: var(--kpi-surface);
+  border: 1px solid var(--kpi-bdr);
+  border-radius: 10px;
+  padding: 16px 18px;
+  min-width: 0;
+}
+
+.kpi-c2 { grid-column: span 2 } .kpi-c3 { grid-column: span 3 } .kpi-c4 { grid-column: span 4 }
+
+.kpi-card-t {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--kpi-muted);
+  margin-bottom: 10px;
+}
+.kpi-card-t .tdot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
+.kpi-card-t small { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--kpi-muted); }
+
+.kpi-big {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  color: var(--kpi-ink);
+  font-variant-numeric: tabular-nums;
+}
+.kpi-big .u { font-size: 13px; font-weight: 600; color: var(--kpi-muted); margin-left: 3px; letter-spacing: 0; }
+
+.kpi-sub { font-size: 12px; font-weight: 500; color: var(--kpi-muted); margin-top: 7px; }
+.kpi-sub b { color: var(--kpi-ink); font-weight: 700; }
+
+/* ── Bars ── */
+
+.kpi-bars { margin-top: 12px; }
+.kpi-brow { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.kpi-blbl {
+  width: 118px; flex: 0 0 auto;
+  font-size: 12px; font-weight: 600; color: var(--kpi-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kpi-btrack { flex: 1; height: 24px; background: var(--kpi-raised); border-radius: 5px; overflow: hidden; }
+.kpi-bfill {
+  height: 100%; border-radius: 5px;
+  display: flex; align-items: center; padding-inline-start: 9px;
+  font-size: 11px; font-weight: 700; color: #ffffff;
+  white-space: nowrap; min-width: fit-content;
+  font-variant-numeric: tabular-nums;
+  transition: width .6s cubic-bezier(.22, 1, .36, 1);
+}
+.kpi-bfill .sm { font-weight: 500; margin-inline-start: 5px; opacity: 0.85; }
+
+/* Dark mode lightens the status colours, so the label on a filled bar flips to ink to
+   keep it readable against them. */
+:root[data-theme="dark"] .kpi-bfill { color: #16181c; }
+
+/* ── Pipeline flow ── */
+
+.kpi-flow { display: flex; align-items: stretch; gap: 4px; margin-top: 18px; }
+
+.kpi-flow-box {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 16px 8px;
+  border-radius: 8px;
+  background: var(--kpi-raised);
+  border: 1px solid var(--kpi-bdr);
+  position: relative;
+}
+.kpi-flow-box.ours { border-style: dashed; border-color: var(--kpi-accent); }
+.kpi-flow-box.ext { border-style: dashed; opacity: 0.75; }
+.kpi-flow-box.total { border-color: var(--kpi-purple); background: var(--kpi-purple-bg); }
+
+.kpi-flow-val { font-size: 21px; font-weight: 800; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
+.kpi-flow-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--kpi-muted); margin-top: 5px; }
+.kpi-flow-med { font-size: 10px; font-weight: 500; color: var(--kpi-muted); margin-top: 2px; }
+.kpi-flow-arrow { display: flex; align-items: center; padding: 0 4px; color: var(--kpi-muted); font-size: 15px; }
+
+.kpi-flow-tag {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.kpi-flow-tag.ours { background: var(--kpi-accent-bg); color: var(--kpi-accent); }
+.kpi-flow-tag.theirs { background: var(--kpi-raised); color: var(--kpi-muted); border: 1px solid var(--kpi-bdr); }
+.kpi-flow-tag.total { background: var(--kpi-purple-bg); color: var(--kpi-purple); }
+
+/* ── Badges ── */
+
+.kpi-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.kpi-badge.good { background: var(--kpi-good-bg); color: var(--kpi-good); }
+.kpi-badge.bad { background: var(--kpi-bad-bg); color: var(--kpi-bad); }
+.kpi-badge.warn { background: var(--kpi-warn-bg); color: var(--kpi-warn); }
+.kpi-badge.info { background: var(--kpi-blue-bg); color: var(--kpi-blue); }
+.kpi-badge.none { background: var(--kpi-raised); color: var(--kpi-muted); }
+
+/* ── Chips ── */
+
+.kpi-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 1rem; }
+
+.kpi-chip {
+  background: var(--kpi-surface);
+  border: 1px solid var(--kpi-bdr);
+  color: var(--kpi-muted);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.kpi-chip:hover { border-color: var(--kpi-accent); color: var(--kpi-ink); }
+.kpi-chip.on { background: var(--kpi-accent); border-color: var(--kpi-accent); color: #ffffff; }
+
+.kpi-chip-count { font-size: 12px; font-weight: 600; color: var(--kpi-muted); margin-inline-start: 4px; }
+
+.kpi-search {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--kpi-bdr);
+  border-radius: 20px;
+  background: var(--kpi-surface);
+  color: var(--kpi-ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  width: 190px;
+}
+.kpi-search:focus { outline: none; border-color: var(--kpi-accent); }
+.kpi-search::placeholder { color: var(--kpi-muted); font-weight: 500; }
+
+/* ── KPI list items ── */
+
+.kpi-item {
+  padding: 13px 15px;
+  background: var(--kpi-raised);
+  border-radius: 8px;
+  border-inline-start: 3px solid var(--kpi-good);
+  margin-bottom: 8px;
+}
+.kpi-item.warn { border-inline-start-color: var(--kpi-warn); }
+.kpi-item.bad { border-inline-start-color: var(--kpi-bad); }
+.kpi-item.info { border-inline-start-color: var(--kpi-blue); }
+.kpi-item.accent { border-inline-start-color: var(--kpi-purple); }
+
+.kpi-item-n { font-size: 13px; font-weight: 700; color: var(--kpi-ink); margin-bottom: 3px; }
+.kpi-item-d { font-size: 11px; font-weight: 500; color: var(--kpi-muted); line-height: 1.55; }
+.kpi-item-d b { color: var(--kpi-ink-2); font-weight: 700; }
+.kpi-item-v { font-size: 11px; font-weight: 700; color: var(--kpi-accent); margin-top: 5px; font-variant-numeric: tabular-nums; }
+
+/* ── Legend ── */
+
+.kpi-legend-item { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 12px; font-weight: 600; color: var(--kpi-ink); }
+.kpi-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.kpi-legend-val { margin-inline-start: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ── Tables: the shared table styles carry these; only the breach tint is new ── */
+
+.kpi-root .breach-row td { background: var(--kpi-bad-bg); }
+.kpi-scroll { max-height: 70vh; overflow-y: auto; }
+
+/* ── Notes ── */
+
+.kpi-note {
+  margin-top: 1rem;
+  padding: 11px 14px;
+  background: var(--kpi-warn-bg);
+  border: 1px solid var(--kpi-bdr);
+  border-inline-start: 3px solid var(--kpi-warn);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--kpi-ink-2);
+  line-height: 1.6;
+}
+.kpi-note b { color: var(--kpi-ink); font-weight: 700; }
+
+.kpi-empty { padding: 20px 0; font-size: 13px; font-weight: 600; color: var(--kpi-muted); text-align: center; }
+
+.kpi-hidden { display: none !important; }
+
+@media (max-width: 1100px) {
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi-c3, .kpi-c4 { grid-column: span 2; }
+}
+
+@media (max-width: 700px) {
+  .kpi-grid { grid-template-columns: minmax(0, 1fr); }
+  .kpi-c2, .kpi-c3, .kpi-c4 { grid-column: span 1; }
+  .kpi-flow { flex-wrap: wrap; }
+  .kpi-flow-arrow { display: none; }
+  .kpi-flow-box { min-width: 45%; }
+  .kpi-tabs { gap: 1rem; }
+}

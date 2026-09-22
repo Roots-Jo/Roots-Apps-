@@ -20,6 +20,24 @@
     },
 
     "users":              { ".read": true, ".write": true },
+
+    /*
+     * Refresh bookkeeping: when the last on-demand and scheduled COD fetches ran, so the
+     * dashboards can show it and the cooldown holds across function instances. Written by
+     * the Admin SDK, which bypasses these rules, so the clients only need to read it —
+     * leaving it read-only also stops a client from clearing the stamp to dodge the
+     * cooldown.
+     */
+    "cod_sync":           { ".read": true, ".write": false },
+
+    /*
+     * Per-order stage timeline parsed from Omniful's order log: pick and pack times, who
+     * did each, and how long the order sat On Hold. Written only by the Admin SDK, which
+     * bypasses these rules, so clients read and never write — a client write here would
+     * corrupt operator metrics with no audit trail.
+     */
+    "cod_order_stages":   { ".read": true, ".write": false },
+
     "cod_daily_orders":   { ".read": true, ".write": true },
     "cod_reconciliation": { ".read": true, ".write": true },
     "cases_tracker":      { ".read": true, ".write": true },

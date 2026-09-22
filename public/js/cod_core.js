@@ -30,8 +30,9 @@ import {
     addDays,
     daysBetween,
     formatDisplayDate,
-    dayNameOf
-} from "/js/cod_shared.js?v=1.1.0";
+    dayNameOf,
+    isNonProductionStore
+} from "/js/cod_shared.js?v=1.3.0";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDd8w3D3i0fehq-uvyCzag3PbtknAuV0jQ",
@@ -175,6 +176,11 @@ export function enrichOrders() {
         order._dateKey = dateKey;
 
         const flat = flattenObject(order);
+
+        // Dropped before the model is built, so every indicator, group and chart on these
+        // pages is already free of it without each one filtering separately.
+        if (isNonProductionStore(extractStoreName(order, flat))) return;
+
         const delivered = extractOrderDeliveredDate(order, flat);
         const created = extractOrderCreatedDate(order, flat);
         const shipped = extractOrderShippedDate(order, flat);
@@ -560,6 +566,53 @@ export function defaultBusinessDay() {
     let key = addDays(dateKeyOf(new Date()), -1);
     if (dayNameOf(key) === 'Friday') key = addDays(key, -1);
     return key;
+}
+
+// ── On-demand refresh ──
+
+// Asks the server to pull the last two days from Omniful now. Nothing is done with the
+// response beyond reporting it: every page that calls this is already subscribed to
+// cod_daily_orders, so the new rows arrive over that listener and repaint on their own.
+// The server enforces a 60s cooldown and reports it back rather than failing.
+export function wireRefreshButton(buttonId, statusId) {
+    const btn = el(buttonId);
+    if (!btn) return;
+
+    const note = statusId ? el(statusId) : null;
+    const say = (msg) => { if (note) note.textContent = msg; };
+    const label = btn.textContent;
+
+    btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = t('cod_refreshing', 'Refreshing…');
+        say('');
+
+        try {
+            const res = await fetch('/refreshCODNow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            const body = await res.json().catch(() => ({}));
+            const data = body.data || {};
+
+            if (data.skipped) {
+                say(`${t('cod_refresh_soon', 'Just refreshed — try again in')} ${data.retryInSeconds}s`);
+            } else if (data.error) {
+                say(data.reason === 'omniful_auth'
+                    ? t('cod_refresh_auth', 'Omniful rejected the credentials. The token needs rotating.')
+                    : `${t('cod_refresh_failed', 'Refresh failed')}: ${data.error}`);
+            } else {
+                const at = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                say(`${t('cod_refreshed', 'Updated')} ${at} · ${data.count || 0} ${t('cod_orders_synced', 'orders synced')}`);
+            }
+        } catch (err) {
+            say(`${t('cod_refresh_failed', 'Refresh failed')}: ${err.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = label;
+        }
+    });
 }
 
 // ── Data ──

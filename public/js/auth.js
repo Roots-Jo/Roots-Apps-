@@ -16,6 +16,7 @@
   if (path.includes("roots_cod_dashboard") || path.includes("cod_health") || path.includes("cod_operations")) appId = "roots_cod_dashboard";
   else if (path.includes("pickup_tracker")) appId = "pickup_tracker";
   else if (path.includes("cases_tracker")) appId = "cases_tracker";
+  else if (path.includes("kpi_dashboard")) appId = "kpi_dashboard";
   else if (path.includes("admin")) appId = "admin";
   else if (path.includes("orders") || path.includes("deliveries") || path.includes("master-sheet")) appId = "orders";
 

@@ -116,6 +116,24 @@
       },
       "entryPoint": "scheduledFetchCODOrders"
     },
+    "scheduledRefreshCODOrders": {
+      "availableMemoryMb": 512,
+      "timeoutSeconds": 300,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "labels": {},
+      "scheduleTrigger": {
+        "schedule": "2,32 * * * *",
+        "retryConfig": {},
+        "timeZone": "Asia/Amman"
+      },
+      "entryPoint": "scheduledRefreshCODOrders"
+    },
     "syncCODOrders": {
       "availableMemoryMb": null,
       "timeoutSeconds": null,
@@ -129,6 +147,20 @@
       "labels": {},
       "httpsTrigger": {},
       "entryPoint": "syncCODOrders"
+    },
+    "refreshCODNow": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "refreshCODNow"
     },
     "getCODOrders": {
       "availableMemoryMb": null,

@@ -2,11 +2,11 @@
 // Fulfilment health (CLA, on hold) lives on the Operations page.
 
 import {
-    t, el, scope, getOrders, subscribeToData, THRESHOLDS, DEFAULT_WINDOW_DAYS, gradeByThreshold, inScope, inWindow, buildCourierGroups, renderTiles, renderDrill, buildBarsSvg, attachChartHover, populateFilterOptions, defaultBusinessDay
+    t, el, scope, getOrders, subscribeToData, THRESHOLDS, DEFAULT_WINDOW_DAYS, gradeByThreshold, inScope, inWindow, buildCourierGroups, renderTiles, renderDrill, buildBarsSvg, attachChartHover, populateFilterOptions, defaultBusinessDay, wireRefreshButton
 } from "/js/cod_core.js?v=1.0.0";
 import {
-    escapeHtml, checkNearestIntegerMatch, formatDisplayDate, dayNameOf
-} from "/js/cod_shared.js?v=1.1.0";
+    escapeHtml, checkNearestIntegerMatch, formatDisplayDate, dayNameOf, isClosedBusinessDay
+} from "/js/cod_shared.js?v=1.3.0";
 
 let filterDate = '';
 let filterBasis = 'delivered';
@@ -30,6 +30,8 @@ function computeIndicators() {
     Array.from(deliveredDates).sort().forEach(dateKey => {
         // Fridays are not a collection day, matching the COD Orders summary.
         if (dayNameOf(dateKey) === 'Friday') return;
+        // Today is still collecting, so it is not yet a day that can fail to reconcile.
+        if (!isClosedBusinessDay(dateKey)) return;
         const groups = buildCourierGroups(dateKey);
         if (groups.length === 0) return;
         const unmatched = groups.filter(g => !g.matched);
@@ -115,6 +117,9 @@ function buildDailyRows() {
     const dates = new Set();
     getOrders().forEach(o => {
         if (o.isDelivered && o.deliveredKey && inWindow(o.deliveredKey) && !o.jafarExcluded && inScope(o)) {
+            // The open day is left off: a half-collected bar beside full ones reads as a
+            // shortfall rather than as a day still in progress.
+            if (!isClosedBusinessDay(o.deliveredKey)) return;
             dates.add(o.deliveredKey);
         }
     });
@@ -234,6 +239,8 @@ function initFilters() {
     };
     winSel?.addEventListener('change', applyWindow);
     winSel?.addEventListener('input', applyWindow);
+
+    wireRefreshButton('codh-refresh', 'codh-refresh-note');
 
     el('codh-reset')?.addEventListener('click', () => {
         filterDate = defaultBusinessDay();

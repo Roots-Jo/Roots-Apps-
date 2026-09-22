@@ -1,7 +1,7 @@
 window.ARABIC_TRANSLATIONS = {
   // Navbar
   "brand_title": "تطبيقات Roots AI",
-  "nav_cod": "تسوية الدفع عند الاستلام",
+  "nav_cod": "تحليل الدفع عند الاستلام",
   "nav_pickup": "متتبع الاستلام",
   "nav_coll_tracker": "متتبع التحصيل",
   "nav_cases": "متتبع الحالات",
@@ -25,7 +25,7 @@ window.ARABIC_TRANSLATIONS = {
   "welcome_user": "مرحباً",
   
   // App Titles
-  "app_cod": "تسوية الدفع عند الاستلام",
+  "app_cod": "تحليل الدفع عند الاستلام",
   "app_pickup": "متتبع الاستلام",
   "app_coll_tracker": "متتبع التحصيل",
   "app_cases": "متتبع الحالات",
@@ -33,6 +33,63 @@ window.ARABIC_TRANSLATIONS = {
   "app_shift": "متتبع الورديات",
   "app_admin": "بوابة المشرف",
   "app_orders": "الطلبات",
+
+  // App Categories
+  "cat_dashboards": "لوحات المعلومات",
+  "cat_daily_ops": "العمليات اليومية",
+  "cat_team": "الفريق والموظفون",
+
+  // App Access Menu
+  "access_who": "من لديه صلاحية الوصول",
+  "access_person": "شخص",
+  "access_people": "أشخاص",
+  "access_nobody": "لم يُمنح أحد صلاحية الوصول بعد.",
+  "no_apps": "لا توجد تطبيقات مخصصة لك بعد. اطلب الصلاحية من المشرف.",
+  "apps_load_error": "تعذر تحميل تطبيقاتك. تحقق من الاتصال وأعد التحميل.",
+
+  // KPI Dashboard
+  "kpi_title": "مؤشرات الأداء التشغيلية - Roots",
+  "kpi_heading": "مؤشرات أداء التنفيذ",
+  "kpi_refresh": "تحديث",
+  "kpi_from": "من",
+  "kpi_to": "إلى",
+  "kpi_reset": "إعادة تعيين",
+  "kpi_loading": "جاري تحميل بيانات الطلبات…",
+  "kpi_err_title": "تعذر تحميل البيانات",
+  "kpi_err_empty": "لا توجد طلبات محفوظة ضمن هذا النطاق الزمني.",
+  "kpi_status_loading": "جاري التحميل…",
+  "kpi_status_live": "مباشر",
+  "kpi_status_err": "خطأ",
+  "kpi_status_empty": "لا توجد بيانات",
+  "kpi_updated": "آخر تحديث",
+  "kpi_orders": "طلب",
+  "kpi_in_range": "طلب ضمن النطاق",
+  "kpi_none_range": "لا توجد طلبات ضمن النطاق",
+  "kpi_total_orders": "إجمالي الطلبات",
+  "kpi_sla": "الالتزام باتفاقية الخدمة",
+  "kpi_tab_overview": "نظرة عامة",
+  "kpi_tab_sla": "الالتزام باتفاقية الخدمة",
+  "kpi_tab_merchants": "التجار",
+  "kpi_tab_biz": "الأعمال",
+  "kpi_tab_breaches": "الطلبات المتأخرة",
+  "kpi_tab_orders": "كل الطلبات",
+  "kpi_tab_kpis": "مؤشرات مقترحة",
+  "kpi_note_title": "غير متوفر في تدفق الطلبات:",
+  "kpi_note_body": "لا يتضمن تدفق الطلبات وقت الانتقاء أو التغليف أو اسم المغلِّف، لذلك لا يمكن قياس أزمنة مراحل الانتقاء والتغليف ولا نسبة الانتقاء في نفس اليوم ولا أداء المغلِّفين. يُستخدم وقت إنشاء الشحنة بدلاً من ذلك كمرحلة المعالجة في المستودع.",
+  "kpi_rule_cutoff": "وقت الإغلاق",
+  "kpi_rule_before": "قبل 10 مساءً ← <b>يُسلّم في يوم العمل التالي</b>",
+  "kpi_rule_after": "بعد 10 مساءً ← <b>يُسلّم بعد يوم العمل التالي</b>",
+  "kpi_rule_friday": "<b>الجمعة مستثناة</b> من ساعات العمل",
+  "kpi_rule_flag": "معلّم = <b>سُلّم بعد الموعد النهائي</b>",
+
+  // COD refresh
+  "cod_refresh_now": "تحديث الآن",
+  "cod_refreshing": "جاري التحديث…",
+  "cod_refreshed": "تم التحديث",
+  "cod_orders_synced": "طلب تمت مزامنته",
+  "cod_refresh_soon": "تم التحديث للتو — أعد المحاولة خلال",
+  "cod_refresh_failed": "فشل التحديث",
+  "cod_refresh_auth": "رفض Omniful بيانات الاعتماد. يجب تدوير الرمز.",
 
   // --- Common & Global ---
   "shared_workspace": "مساحة عمل الفريق المشتركة",
@@ -355,8 +412,8 @@ window.ARABIC_TRANSLATIONS = {
   "shift_no_history": "لا توجد مناوبات.",
 
   // --- COD Dashboard ---
-  "cod_title": "مطابقة الدفع عند الاستلام - Roots",
-  "cod_hero_title": "مطابقة <span>الدفع عند الاستلام</span>",
+  "cod_title": "تحليل الدفع عند الاستلام - Roots",
+  "cod_hero_title": "تحليل <span>الدفع عند الاستلام</span>",
   "cod_hero_sub": "قم بتحميل جداول الطلبات وشركات الشحن للمطابقة",
   "cod_btn_history": "عرض المطابقات السابقة",
   "cod_lbl_roots": "ROOTS",
@@ -421,7 +478,7 @@ window.ARABIC_TRANSLATIONS = {
   "admin_lbl_password": "كلمة المرور",
   "admin_btn_save": "حفظ",
   "admin_privileges": "صلاحيات المسؤول",
-  "app_cod": "مطابقة الدفع عند الاستلام",
+  "app_cod": "تحليل الدفع عند الاستلام",
   "app_pickup": "متتبع التحصيلات",
   "app_kpi": "لوحة مؤشرات الأداء",
   "app_cases": "متتبع الحالات",
@@ -537,7 +594,7 @@ window.ARABIC_TRANSLATIONS = {
   window.ENGLISH_TRANSLATIONS = {
     // Navbar
     "brand_title": "Roots AI apps",
-    "nav_cod": "COD Reconciliation",
+    "nav_cod": "COD Analysis",
     "nav_pickup": "Pick Up Tracker",
     "nav_coll_tracker": "Collection Tracker",
     "nav_cases": "Cases Tracker",
@@ -561,7 +618,7 @@ window.ARABIC_TRANSLATIONS = {
     "welcome_user": "Welcome",
     
     // App Titles
-    "app_cod": "COD Reconciliation",
+    "app_cod": "COD Analysis",
     "app_pickup": "Pick Up Tracker",
     "app_coll_tracker": "Collection Tracker",
     "app_cases": "Cases Tracker",
@@ -569,6 +626,63 @@ window.ARABIC_TRANSLATIONS = {
     "app_shift": "Shift Tracker",
     "app_admin": "Admin Portal",
     "app_orders": "Orders",
+
+    // App Categories
+    "cat_dashboards": "Dashboards",
+    "cat_daily_ops": "Daily Ops",
+    "cat_team": "Team & Staff",
+
+    // App Access Menu
+    "access_who": "Who has access",
+    "access_person": "person",
+    "access_people": "people",
+    "access_nobody": "No one has been given access yet.",
+    "no_apps": "You have no apps assigned yet. Ask an admin for access.",
+    "apps_load_error": "Could not load your apps. Check the connection and refresh.",
+
+    // KPI Dashboard
+    "kpi_title": "Roots Fulfilment KPIs",
+    "kpi_heading": "Fulfilment KPIs",
+    "kpi_refresh": "Refresh",
+    "kpi_from": "From",
+    "kpi_to": "To",
+    "kpi_reset": "Reset",
+    "kpi_loading": "Loading order data…",
+    "kpi_err_title": "Could not load data",
+    "kpi_err_empty": "No orders stored for this date range.",
+    "kpi_status_loading": "Loading…",
+    "kpi_status_live": "Live",
+    "kpi_status_err": "Error",
+    "kpi_status_empty": "No data",
+    "kpi_updated": "updated",
+    "kpi_orders": "orders",
+    "kpi_in_range": "orders in range",
+    "kpi_none_range": "No orders in range",
+    "kpi_total_orders": "Total Orders",
+    "kpi_sla": "SLA Compliance",
+    "kpi_tab_overview": "Overview",
+    "kpi_tab_sla": "SLA Compliance",
+    "kpi_tab_merchants": "Merchants",
+    "kpi_tab_biz": "Business",
+    "kpi_tab_breaches": "Breached Orders",
+    "kpi_tab_orders": "All Orders",
+    "kpi_tab_kpis": "Suggested KPIs",
+    "kpi_note_title": "Not in the order feed:",
+    "kpi_note_body": "the order feed carries no pick time, pack time or packer name, so stage-by-stage pick and pack timings, same-day pick rate and packer performance cannot be measured. Shipment-created time is used as the warehouse-processing stage instead.",
+    "kpi_rule_cutoff": "Cutoff",
+    "kpi_rule_before": "Before 10pm → <b>delivered next working day</b>",
+    "kpi_rule_after": "After 10pm → <b>delivered day after next</b>",
+    "kpi_rule_friday": "<b>Friday excluded</b> from working hours",
+    "kpi_rule_flag": "Flagged = <b>delivered past SLA deadline</b>",
+
+    // COD refresh
+    "cod_refresh_now": "Refresh Now",
+    "cod_refreshing": "Refreshing…",
+    "cod_refreshed": "Updated",
+    "cod_orders_synced": "orders synced",
+    "cod_refresh_soon": "Just refreshed — try again in",
+    "cod_refresh_failed": "Refresh failed",
+    "cod_refresh_auth": "Omniful rejected the credentials. The token needs rotating.",
 
     // --- Common & Global ---
     "shared_workspace": "Shared · Team Workspace",
@@ -897,8 +1011,8 @@ window.ARABIC_TRANSLATIONS = {
     "shift_no_history": "No shifts found.",
 
     // --- COD Dashboard ---
-    "cod_title": "Roots COD Reconciliation",
-    "cod_hero_title": "COD <span>Reconciliation</span>",
+    "cod_title": "Roots COD Analysis",
+    "cod_hero_title": "COD <span>Analysis</span>",
     "cod_hero_sub": "Upload your Orders and Shipping Partner sheets to reconcile",
     "cod_btn_history": "View Past Reconciliations",
     "cod_lbl_roots": "ROOTS",
@@ -963,7 +1077,7 @@ window.ARABIC_TRANSLATIONS = {
     "admin_lbl_password": "Password",
     "admin_btn_save": "Save",
     "admin_privileges": "Admin Privileges",
-    "app_cod": "COD Reconciliation",
+    "app_cod": "COD Analysis",
     "app_pickup": "Pick Up Tracker",
     "app_kpi": "KPI Dashboard",
     "app_cases": "Cases Tracker",

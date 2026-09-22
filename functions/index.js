@@ -734,7 +734,13 @@ exports.updateStatuses = functions.https.onRequest(async (req, res) => {
   });
 });
 // Reusable core helper to fetch COD orders from Omniful API and save to Firebase Realtime Database
-async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes = null) {
+// `options.maxPages` caps how deep each seller/mode is paged. The Omniful call itself
+// takes no date filter — the window is applied client-side after each page — so page
+// depth, not window width, is what costs API calls. The nightly reconciliation pass
+// keeps the full depth; the hourly top-up runs shallow. `options.label` only tags logs.
+async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes = null, options = {}) {
+  const maxPagesPerMode = Number.isInteger(options.maxPages) && options.maxPages > 0 ? options.maxPages : 15;
+  const label = options.label || 'COD Fetch';
   const baseUrl = memoryTokens.baseUrl;
 
   const defaultSellerCodes = ["SEM", "BAM", "JS", "AA", "HOJ", "JAT"];
@@ -795,7 +801,7 @@ async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes 
     // 1. Fetch delivered orders for the seller
     for (const fetchMode of ['delivered', 'all']) {
       let searchAfter = null;
-      let maxPages = 15;
+      let maxPages = maxPagesPerMode;
       let pageCount = 0;
 
       try {
@@ -830,6 +836,11 @@ async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes 
 
           sellerOrders.push(...validOrders);
 
+          // No early exit on an empty page. The cursor is keyed on order id, but the
+          // 'delivered' pass filters on DELIVERY date, which is not monotonic in id — a
+          // page can legitimately match nothing while later pages still hold orders
+          // inside the window. Page depth is bounded by maxPagesPerMode instead, which
+          // costs a few more calls and cannot silently drop orders.
           if (orderData.meta) {
             searchAfter = orderData.meta.end_cursor || orderData.meta.search_after || orderData.meta.next_cursor || orderData.meta.cursor || null;
           } else if (pageOrders.length > 0) {
@@ -893,14 +904,57 @@ async function fetchAndStoreCODOrders(startTimestamp, endTimestamp, sellerCodes 
     }
   }
 
-  if (Object.keys(updates).length > 0) {
+  // Write only what actually changed.
+  //
+  // Omniful's list endpoint has no "changed since" filter — updated_after, updated_since,
+  // modified_since, from_date, start_time and updated_at[gte] were all tested and are
+  // silently ignored, returning the identical page every time. The list is also ordered by
+  // order_created_at descending, not by updated_at, so a status change on an older order
+  // does not float to the front where a watermark could catch it. The pages therefore have
+  // to be re-read; that part is not avoidable against this API.
+  //
+  // What IS avoidable is rewriting them. Most orders in a 2-day window are unchanged
+  // between runs, and every redundant write wakes the realtime listener on every open
+  // dashboard and forces a repaint. Comparing updated_at against what is already stored
+  // costs one read of the affected day buckets and typically drops the write set to a
+  // handful of rows, or to nothing at all on a quiet run.
+  const dateKeysTouched = [...new Set(Object.keys(updates).map(p => p.split('/')[1]))];
+  const stored = {};
+  await Promise.all(dateKeysTouched.map(async (dk) => {
     try {
-      await db.ref().update(updates);
+      const snap = await db.ref(`cod_daily_orders/${dk}`).get();
+      stored[dk] = snap.val() || {};
+    } catch (e) {
+      // If the comparison read fails, fall back to writing everything rather than
+      // skipping a genuine change.
+      stored[dk] = null;
+    }
+  }));
+
+  const changed = {};
+  let unchangedCount = 0;
+  for (const [path, order] of Object.entries(updates)) {
+    const [, dk, orderId] = path.split('/');
+    const existingDay = stored[dk];
+    const existing = existingDay ? existingDay[orderId] : undefined;
+    if (existing && existing.updated_at && order.updated_at && existing.updated_at === order.updated_at) {
+      unchangedCount++;
+      continue;
+    }
+    changed[path] = order;
+  }
+
+  const changedCount = Object.keys(changed).length;
+  logger.info(`[${label}] ${allOrders.length} fetched — ${changedCount} new or changed, ${unchangedCount} unchanged and skipped.`);
+
+  if (changedCount > 0) {
+    try {
+      await db.ref().update(changed);
     } catch (dbErr) {
       logger.warn(`Direct RTDB update failed, using RTDB REST API fallback: ${dbErr.message}`);
-      await axios.patch("https://roots-weekly-default-rtdb.europe-west1.firebasedatabase.app/.json", updates);
+      await axios.patch("https://roots-weekly-default-rtdb.europe-west1.firebasedatabase.app/.json", changed);
     }
-    logger.info(`[COD Fetch] Successfully saved ${Object.keys(updates).length} orders to RTDB across dates.`);
+    logger.info(`[${label}] Saved ${changedCount} orders to RTDB across ${dateKeysTouched.length} date(s).`);
   }
 
   return { count: allOrders.length, orders: allOrders };
@@ -983,6 +1037,300 @@ exports.scheduledFetchCODOrders = onSchedule({
   } catch (err) {
     logger.error(`[Scheduled COD] Failed automated fetch for ${windowDescription}: ${err.message}`, err);
   }
+});
+
+// ── Order stage timeline ────────────────────────────────────────────────────────
+//
+// The orders endpoint carries only created / shipped / delivered. Everything between —
+// when an order was picked, packed, who did it, how long it sat On Hold and why — lives
+// in a separate per-order log:
+//
+//   GET /sales-channel/public/v1/tenants/sellers/{seller}/orders/{id}/logs
+//
+// It returns an event list: {event, event_updated_by, event_updated_at, note}. Verified
+// across 20 orders spanning every status: the vocabulary below is complete, and the
+// timestamps are UTC despite carrying no zone marker (they matched order_created_at to
+// the second on 20/20).
+//
+// It costs one call per order, so a log is fetched ONCE, only after the order reaches a
+// terminal state where its timeline can no longer change, and the stored record doubles
+// as the "already captured" marker.
+
+// Actors that are integrations rather than people — excluded from operator metrics.
+const SYSTEM_ACTORS = /^(system|custom|shopify|tenant custom integration|.*seller custom integration.*|api|automation)$/i;
+
+// Log stamps look like "Sep 17, 2026 08:05:54 PM" with no zone, and are UTC.
+function parseLogStamp(raw) {
+  if (!raw) return null;
+  const t = Date.parse(String(raw).trim() + ' UTC');
+  return isNaN(t) ? null : new Date(t).toISOString();
+}
+
+function parseOrderLog(logs) {
+  if (!Array.isArray(logs) || !logs.length) return null;
+
+  const events = logs
+    .map(l => ({
+      name: String(l.event || '').trim(),
+      by: String(l.event_updated_by || '').trim(),
+      at: parseLogStamp(l.event_updated_at),
+      note: String(l.note || '').trim()
+    }))
+    .filter(e => e.at)
+    .sort((a, b) => a.at.localeCompare(b.at));
+
+  if (!events.length) return null;
+
+  // First occurrence wins for a stage start, last for a completion: an order can bounce
+  // back into On Hold and be re-picked, and the run that actually shipped it is the last.
+  const first = (name) => events.find(e => e.name === name) || null;
+  const last = (name) => [...events].reverse().find(e => e.name === name) || null;
+
+  const picked = last('Picked');
+  const packed = last('Packed');
+  const pickStart = first('In Picking');
+  const packStart = first('In Packing');
+  const approved = first('Approved');
+  const ready = last('Ready To Ship');
+  const shipped = last('Shipped');
+  const delivered = last('Delivered');
+  const cancelled = last('Cancelled');
+  const returned = last('Return To Origin') || last('Returned');
+
+  // On Hold is emitted repeatedly while an order stays blocked, so the time held is from
+  // the first hold to whatever moved it on, not the number of events.
+  const holds = events.filter(e => e.name === 'On Hold');
+  let holdMs = 0, holdReason = '';
+  if (holds.length) {
+    holdReason = holds.find(h => h.note)?.note || '';
+    const firstHold = holds[0];
+    const releasedBy = events.find(e => e.at > firstHold.at && !['On Hold', 'New Order', 'Order Synced'].includes(e.name));
+    if (releasedBy) holdMs = Date.parse(releasedBy.at) - Date.parse(firstHold.at);
+  }
+
+  const person = (e) => (e && e.by && !SYSTEM_ACTORS.test(e.by)) ? e.by : null;
+
+  return {
+    created_at: (first('New Order') || first('Order Synced') || events[0]).at,
+    approved_at: approved ? approved.at : null,
+    pick_start_at: pickStart ? pickStart.at : null,
+    picked_at: picked ? picked.at : null,
+    pack_start_at: packStart ? packStart.at : null,
+    packed_at: packed ? packed.at : null,
+    ready_at: ready ? ready.at : null,
+    shipped_at: shipped ? shipped.at : null,
+    delivered_at: delivered ? delivered.at : null,
+    closed_at: (cancelled || returned) ? (cancelled || returned).at : null,
+    closed_reason: (cancelled || returned) ? ((cancelled || returned).note || (cancelled ? 'Cancelled' : 'Return to origin')) : null,
+    picker: person(picked) || person(pickStart),
+    packer: person(packed) || person(packStart),
+    approver: person(approved),
+    hold_ms: holdMs || null,
+    hold_reason: holdReason || null,
+    hold_events: holds.length || null,
+    captured_at: Date.now()
+  };
+}
+
+// Terminal states only: before this the timeline is still moving and a log fetched now
+// would have to be fetched again later.
+const LOG_CAPTURE_STATUSES = ['delivered', 'cancelled', 'canceled', 'returned', 'return_to_origin', 'rto'];
+
+// Capped per run so the log fetch can never dominate the burst. ~150-200 orders reach a
+// terminal state a day against a ceiling of 25 x 48 runs, so steady state is covered with
+// room to spare; anything older is handled by the one-off backfill.
+const MAX_LOG_FETCHES_PER_RUN = 25;
+
+async function captureOrderStages(orders, label) {
+  const candidates = orders.filter(o => {
+    const s = (o.status_code || o.display_status || '').toString().toLowerCase().trim().replace(/\s+/g, '_');
+    return LOG_CAPTURE_STATUSES.includes(s) && (o.order_id || o.id);
+  });
+  if (!candidates.length) return { fetched: 0, skipped: 0 };
+
+  // One shallow read tells us everything already captured, rather than a read per order.
+  let existing = {};
+  try {
+    existing = (await db.ref('cod_order_stages').get({ shallow: true })).val() || {};
+  } catch (e) {
+    try { existing = (await db.ref('cod_order_stages').get()).val() || {}; } catch (e2) { existing = {}; }
+  }
+
+  const todo = [];
+  for (const o of candidates) {
+    const id = String(o.order_id || o.id).replace(/[.#$/[\]]/g, '_');
+    if (!existing[id]) todo.push({ order: o, id });
+    if (todo.length >= MAX_LOG_FETCHES_PER_RUN) break;
+  }
+  if (!todo.length) return { fetched: 0, skipped: candidates.length };
+
+  const updates = {};
+  let ok = 0;
+  for (const { order, id } of todo) {
+    try {
+      const res = await omnifulRequest({
+        method: 'GET',
+        url: `${memoryTokens.baseUrl}/sales-channel/public/v1/tenants/sellers/${order.seller_code}/orders/${order.id}/logs`,
+        timeout: 12000
+      });
+      const parsed = parseOrderLog(((res.data || {}).data || {}).logs);
+      if (parsed) { updates[`cod_order_stages/${id}`] = parsed; ok++; }
+    } catch (err) {
+      if (err.isAuthError) throw err;
+      logger.warn(`[${label}] Could not read the log for order ${id}: ${err.message}`);
+    }
+  }
+
+  if (Object.keys(updates).length) await db.ref().update(updates);
+  logger.info(`[${label}] Stage timelines captured for ${ok} order(s); ${candidates.length - todo.length} already had one.`);
+  return { fetched: ok, skipped: candidates.length - todo.length };
+}
+
+// Recent-window top-up, so the dashboards are current through the day instead of only as
+// of last midnight. This is NOT the reconciliation pass: scheduledFetchCODOrders above
+// still owns that and still runs once every 24 hours with its Friday rules, its Saturday
+// Wed+Thu catch-up and its 14-day open-order lookback.
+//
+// Deliberately narrow. It covers yesterday and today only, and pages 4 deep per seller
+// instead of 15, because the Omniful endpoint takes no date filter and bills by page.
+// 400 orders per seller per mode is several days of volume at current rates (~150-200
+// orders a day across all sellers), so the shallow depth cannot miss a two-day window.
+//
+// It runs every day including Friday, on purpose. The nightly job skips Friday and the
+// Saturday run only reaches back to Wednesday and Thursday, so Friday deliveries were
+// landing nowhere: of the last five Fridays, three had no bucket at all and the other
+// two held 10 and 26 orders against a ~150 weekday average.
+const RECENT_MAX_PAGES = 4;
+const RECENT_WINDOW_LABEL = 'Recent COD';
+
+// Amman calendar day for an instant, as YYYY-MM-DD.
+function ammanDayStr(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Yesterday 00:00 .. today 23:59 in Amman. Yesterday is included so a delivery landing
+// just after midnight, or a status that moves overnight, is picked up without waiting for
+// the nightly pass.
+function recentWindow() {
+  const now = new Date();
+  const ammanNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + 3 * 60 * 60 * 1000);
+  const todayStr = ammanDayStr(ammanNow);
+  const yesterday = new Date(ammanNow);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = ammanDayStr(yesterday);
+  return {
+    todayStr,
+    yesterdayStr,
+    startTimestamp: new Date(`${yesterdayStr}T00:00:00+03:00`).getTime(),
+    endTimestamp: new Date(`${todayStr}T23:59:59.999+03:00`).getTime()
+  };
+}
+
+// Every 30 minutes. Omniful rate-limits (see the 429 backoff in omnifulRequest) and the
+// access token is shared with the LogesTechs bridge, so the burst rate matters more than
+// the daily total: 30 minutes is ~2,300 requests a day against ~4,600 at 15 minutes and
+// ~14,000 at 5-minute polling. Anything fresher than this is served by refreshCODNow
+// below, on demand, which costs nothing when nobody is asking — so the background job
+// only has to keep an untouched dashboard reasonably current, not instantly current.
+exports.scheduledRefreshCODOrders = onSchedule({
+  // Offset off the hour so a run never collides with the midnight reconciliation pass.
+  schedule: "2,32 * * * *",
+  timeZone: "Asia/Amman",
+  timeoutSeconds: 300,
+  memory: "512MiB"
+}, async (event) => {
+  const w = recentWindow();
+  logger.info(`[${RECENT_WINDOW_LABEL}] Refreshing ${w.yesterdayStr}..${w.todayStr} (max ${RECENT_MAX_PAGES} pages per seller/mode).`);
+
+  try {
+    const res = await fetchAndStoreCODOrders(w.startTimestamp, w.endTimestamp, null, {
+      maxPages: RECENT_MAX_PAGES,
+      label: RECENT_WINDOW_LABEL
+    });
+    await db.ref('cod_sync').update({ lastScheduledAt: Date.now(), lastScheduledCount: res.count });
+    logger.info(`[${RECENT_WINDOW_LABEL}] Stored ${res.count} orders for ${w.yesterdayStr}..${w.todayStr}.`);
+
+    // Only on the scheduled pass, never on the Refresh Now button — a manual refresh
+    // should stay fast and must not let repeated presses multiply into log fetches.
+    try {
+      await captureOrderStages(res.orders || [], RECENT_WINDOW_LABEL);
+    } catch (logErr) {
+      if (logErr.isAuthError) throw logErr;
+      logger.warn(`[${RECENT_WINDOW_LABEL}] Stage capture failed: ${logErr.message}`);
+    }
+  } catch (err) {
+    // A failed top-up is not worth alerting on by itself: the next run is 15 minutes away
+    // and the nightly reconciliation pass still backfills the same days.
+    logger.error(`[${RECENT_WINDOW_LABEL}] Refresh failed for ${w.yesterdayStr}..${w.todayStr}: ${err.message}`, err);
+  }
+});
+
+// On-demand "Refresh now" behind the dashboards' buttons. Same narrow window and page
+// depth as the scheduled run.
+//
+// The cooldown is the point of this endpoint rather than an afterthought: a button any
+// number of people can hold down is exactly how a shared, rate-limited token gets
+// throttled. The last-run stamp lives in RTDB, not in instance memory, so the limit holds
+// across concurrently warm function instances instead of once per instance.
+const REFRESH_COOLDOWN_MS = 60 * 1000;
+
+exports.refreshCODNow = functions.https.onRequest(async (req, res) => {
+  return cors(req, res, async () => {
+    if (req.method !== "POST") {
+      res.status(405).send({ data: { error: "Method Not Allowed" } });
+      return;
+    }
+
+    try {
+      const now = Date.now();
+      const stampRef = db.ref('cod_sync/lastRefreshAt');
+      const last = (await stampRef.get()).val() || 0;
+      const sinceMs = now - last;
+
+      if (sinceMs < REFRESH_COOLDOWN_MS) {
+        res.status(200).send({
+          data: {
+            skipped: true,
+            reason: "cooldown",
+            retryInSeconds: Math.ceil((REFRESH_COOLDOWN_MS - sinceMs) / 1000),
+            lastRefreshAt: last
+          }
+        });
+        return;
+      }
+
+      // Claimed before the fetch, so two clicks arriving together cannot both proceed.
+      await stampRef.set(now);
+
+      const w = recentWindow();
+      logger.info(`[Refresh Now] Manual refresh of ${w.yesterdayStr}..${w.todayStr}.`);
+
+      const result = await fetchAndStoreCODOrders(w.startTimestamp, w.endTimestamp, null, {
+        maxPages: RECENT_MAX_PAGES,
+        label: 'Refresh Now'
+      });
+
+      await db.ref('cod_sync').update({ lastRefreshAt: Date.now(), lastRefreshCount: result.count });
+
+      // The orders themselves are deliberately not returned — the pages are subscribed to
+      // RTDB and repaint from the write. Sending them back would ship megabytes the
+      // caller is about to receive over the listener anyway.
+      res.status(200).send({
+        data: { success: true, count: result.count, from: w.yesterdayStr, to: w.todayStr }
+      });
+    } catch (error) {
+      logger.error(`[Refresh Now] Failed: ${error.message}`, error);
+      res.status(error.isAuthError ? 502 : 500).send({
+        data: {
+          error: error.message,
+          ...(error.isAuthError ? { reason: "omniful_auth" } : {})
+        }
+      });
+    }
+  });
 });
 
 // Sync / Backfill COD Orders HTTP Endpoint (Admin or automated trigger)
